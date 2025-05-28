@@ -1,7 +1,7 @@
-from typing import Optional
-import modal
 import subprocess
+from typing import Optional
 
+import modal
 
 MINUTES = 60
 
@@ -42,6 +42,14 @@ def download_model(repo_id, allow_patterns, revision: Optional[str] = None):
     print("🦙 {repo_id} model loaded")
 
 
+@app.local_entrypoint()
+def main():
+    download_model.remote(
+        "mradermacher/ARPO_UITARS1.5_7B-GGUF",
+        ["ARPO_UITARS1.5_7B.mmproj-f16.gguf"],
+    )
+
+
 GPU_CONFIG = "L4"
 
 inference_image = (
@@ -70,7 +78,7 @@ inference_image = (
 @modal.web_server(8000)
 def llama_cpp_server():
     model_entrypoint_file = "ARPO_UITARS1.5_7B.Q8_0.gguf"
-    mmproj_file = "ARPO_UITARS1.5_7B.mmproj-Q8_0.gguf"
+    mmproj_file = "ARPO_UITARS1.5_7B.mmproj-f16.gguf"
 
     # set layers to "off-load to", aka run on, GPU
     if GPU_CONFIG is not None:
