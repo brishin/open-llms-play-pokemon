@@ -1,25 +1,29 @@
 import modal
 
+cuda_version = "12.8.0"  # should be no greater than host CUDA version
+flavor = "devel"  #  includes full CUDA toolkit
+operating_sys = "ubuntu22.04"
+tag = f"{cuda_version}-{flavor}-{operating_sys}"
+
 vllm_image = (
-    modal.Image.debian_slim(python_version="3.12")
+    modal.Image.from_registry(f"nvidia/cuda:{tag}", add_python="3.12")
     .pip_install(
-        "vllm==0.7.2",
-        "huggingface_hub[hf_transfer]==0.26.2",
-        "flashinfer-python==0.2.0.post2",  # pinning, very unstable
-        extra_index_url="https://flashinfer.ai/whl/cu124/torch2.5",
+        "vllm==0.9.0",
+        "huggingface_hub[hf_transfer]==0.32.2",
+        "flashinfer-python==0.2.5",
+        extra_index_url="https://flashinfer.ai/whl/cu124/torch2.6",
     )
     .env({"HF_HUB_ENABLE_HF_TRANSFER": "1"})  # faster model transfers
     .env({"VLLM_USE_V1": "1"})
 )
 
-MODELS_DIR = "/llamas"
-MODEL_NAME = "neuralmagic/Meta-Llama-3.1-8B-Instruct-quantized.w4a16"
-MODEL_REVISION = "a7c09948d9a632c2c840722f519672cd94af885d"
+MODEL_NAME = "ByteDance-Seed/UI-TARS-1.5-7B"
+MODEL_REVISION = "683d002dd99d8f95104d31e70391a39348857f4e"
 
 hf_cache_vol = modal.Volume.from_name("huggingface-cache", create_if_missing=True)
 vllm_cache_vol = modal.Volume.from_name("vllm-cache", create_if_missing=True)
 
-app = modal.App("example-vllm-openai-compatible")
+app = modal.App("pokemon-llm-server")
 
 API_KEY = "super-secret-key"  # api key, for auth. for production use, replace with a modal.Secret
 MINUTES = 60
@@ -30,7 +34,7 @@ VLLM_PORT = 8000
     image=vllm_image,
     gpu="A10G",
     scaledown_window=2 * MINUTES,  # how long should we stay up with no requests?
-    timeout=10 * MINUTES,  # how long should we wait for container start?
+    timeout=20 * MINUTES,  # how long should we wait for container start?
     volumes={
         "/root/.cache/huggingface": hf_cache_vol,
         "/root/.cache/vllm": vllm_cache_vol,
@@ -54,17 +58,22 @@ def serve():
         str(VLLM_PORT),
         "--api-key",
         API_KEY,
+        "--trust-remote-code",
+        "--dtype",
+        "bfloat16",
         "--max-model-len",
-        "8192",  # Reduce from default 131072 to 8192 tokens
+        "16384",
+        "--limit-mm-per-prompt",
+        "image=5,video=5",
         "--gpu-memory-utilization",
-        "0.95",  # Use 95% of GPU memory instead of default 90%
+        "0.95",
     ]
 
     subprocess.Popen(" ".join(cmd), shell=True)
 
 
 @app.local_entrypoint()
-def test(test_timeout=10 * MINUTES):
+def test(test_timeout=20 * MINUTES):
     import json
     import time
     import urllib
