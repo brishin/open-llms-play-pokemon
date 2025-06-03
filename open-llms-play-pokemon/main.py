@@ -1,10 +1,13 @@
 import base64
 import io
+import logging
 import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
 from pyboy import PyBoy
+
+from .action_parser import ActionParser
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
@@ -22,6 +25,10 @@ class PokemonRedPlayer:
         self.model_name = model_name
         self.action_history = []
 
+        # Setup logging
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
         self.oai = OpenAI(
             base_url=os.getenv("OPENAI_BASE_URL") or None,
             api_key=os.getenv("OPENAI_API_KEY"),
@@ -37,6 +44,9 @@ class PokemonRedPlayer:
             sound_emulated=False,
         )
         self.pyboy.set_emulation_speed(6)
+
+        # Initialize action parser
+        self.action_parser = ActionParser(self.pyboy)
 
     def _skip_intro(self) -> None:
         """Skip the game intro sequence."""
@@ -74,7 +84,8 @@ Action: ...
 
 ## Action Space
 
-buttons(sequence='') # Press GameBoy buttons in sequence. Use space-separated button names from this exact list: 'a', 'b', 'start', 'select', 'up', 'down', 'left', 'right'. Only use these exact button names. Examples: 'a', 'up up a', 'left b', 'start down a'
+buttons() # Press GameBoy buttons in sequence. Use space-separated button names from this exact list: 'a', 'b', 'start', 'select', 'up', 'down', 'left', 'right'. Only use these exact button names.
+Examples: buttons('a'), buttons('up up a'), buttons('left b'), buttons('start down a')
 
 ## Note
 - Use English in `Thought` part.
@@ -114,20 +125,26 @@ The current game screen is provided as an image. Analyze what's happening on scr
     def start_game(self) -> None:
         """Start the Pokemon Red game and get initial AI response."""
         try:
-            self._skip_intro()
+            with open(os.path.join(self.game_dir, "init.state"), "rb") as f:
+                self.pyboy.load_state(f)
 
             while True:
                 screen_base64 = self.get_screen_base64()
                 ai_response = self.get_ai_response(screen_base64)
-                print(ai_response.choices[0].message.content)
+                response_text = ai_response.choices[0].message.content
+                print(response_text)
 
-                # For now, just add the response to action history without parsing
-                self.action_history.append(ai_response.choices[0].message.content)
+                # Add the response to action history
+                self.action_history.append(response_text)
 
-                # Temporary: press a random button to keep the game moving
-                # This should be replaced with actual action parsing
-                self.pyboy.button("a")
-                self.pyboy.tick(400, render=True)
+                # Parse and execute the AI action
+                success = self.action_parser.parse_and_execute(response_text)
+                if not success:
+                    self.logger.warning(
+                        "Action parsing/execution failed, falling back to 'a' button"
+                    )
+                    self.pyboy.button("a")
+                    self.pyboy.tick(400, render=True)
 
         except Exception as e:
             print(f"Error starting game: {e}")
