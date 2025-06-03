@@ -5,26 +5,28 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 from pyboy import PyBoy
-from tools import ALL_GB_BUTTONS, tool_to_pyboy_button
 
-load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
 
 class PokemonRedPlayer:
     def __init__(
         self,
         headless: bool = False,
-        model_name: str = "ARPO_UITARS1.5_7B",
+        model_name: str = "ByteDance-Seed/UI-TARS-1.5-7B",
     ):
         self.game_dir = os.path.join(os.path.dirname(__file__), "..", "game")
         self.game_path = os.path.join(self.game_dir, "Pokemon Red.gb")
         self.symbols_path = os.path.join(self.game_dir, "pokered.sym")
         self.headless = headless
         self.model_name = model_name
+        self.action_history = []
 
         self.oai = OpenAI(
-            base_url=os.getenv("OPENAI_BASE_URL"), api_key=os.getenv("OPENAI_API_KEY")
+            base_url=os.getenv("OPENAI_BASE_URL") or None,
+            api_key=os.getenv("OPENAI_API_KEY"),
         )
+
         self.pyboy = PyBoy(
             self.game_path,
             debug=False,
@@ -62,29 +64,47 @@ class PokemonRedPlayer:
         return image_base64
 
     def get_ai_response(self, screen_base64: str) -> str:
+        prompt = """You are a GameBoy agent playing Pokemon Red. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task.
+
+## Output Format
+```
+Thought: ...
+Action: ...
+```
+
+## Action Space
+
+buttons(sequence='') # Press GameBoy buttons in sequence. Use space-separated button names from this exact list: 'a', 'b', 'start', 'select', 'up', 'down', 'left', 'right'. Only use these exact button names. Examples: 'a', 'up up a', 'left b', 'start down a'
+
+## Note
+- Use English in `Thought` part.
+- Write a small plan and finally summarize your next action (with its target element) in one sentence in `Thought` part.
+
+## User Instruction
+Play Pokemon Red effectively. Progress through the game by exploring, catching Pokemon, battling trainers, and completing the main storyline. Make strategic decisions based on the current game state shown in the screenshot.
+
+## Current Screenshot
+The current game screen is provided as an image. Analyze what's happening on screen and choose the most appropriate next action."""
+
         completion = self.oai.chat.completions.create(
             model=self.model_name,
-            tools=ALL_GB_BUTTONS,
-            max_completion_tokens=100,
-            temperature=0.1,
+            max_completion_tokens=200,
+            top_p=None,
+            temperature=0.0,
             messages=[
-                {
-                    "role": "system",
-                    "content": "You are a game player playing Pokemon Red. Interact with the game using the provided tools to beat the game.",
-                },
                 {
                     "role": "user",
                     "content": [
                         {
                             "type": "text",
-                            "text": "Here is the current game screen. What should I do next?",
+                            "text": prompt,
                         },
-                        # {
-                        #     "type": "image_url",
-                        #     "image_url": {
-                        #         "url": f"data:image/png;base64,{screen_base64}"
-                        #     },
-                        # },
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/png;base64,{screen_base64}"
+                            },
+                        },
                     ],
                 },
             ],
@@ -99,12 +119,14 @@ class PokemonRedPlayer:
             while True:
                 screen_base64 = self.get_screen_base64()
                 ai_response = self.get_ai_response(screen_base64)
-                print(ai_response.choices[0].message.tool_calls[0].function.name)
-                self.pyboy.button(
-                    tool_to_pyboy_button(
-                        ai_response.choices[0].message.tool_calls[0].function.name
-                    )
-                )
+                print(ai_response.choices[0].message.content)
+
+                # For now, just add the response to action history without parsing
+                self.action_history.append(ai_response.choices[0].message.content)
+
+                # Temporary: press a random button to keep the game moving
+                # This should be replaced with actual action parsing
+                self.pyboy.button("a")
                 self.pyboy.tick(400, render=True)
 
         except Exception as e:
