@@ -23,7 +23,7 @@ class PokemonRedPlayer:
         self.symbols_path = os.path.join(self.game_dir, "pokered.sym")
         self.headless = headless
         self.model_name = model_name
-        self.action_history = []
+        self.message_history = []
 
         # Setup logging
         logging.basicConfig(level=logging.INFO)
@@ -97,28 +97,42 @@ Play Pokemon Red effectively. Progress through the game by exploring, catching P
 ## Current Screenshot
 The current game screen is provided as an image. Analyze what's happening on screen and choose the most appropriate next action."""
 
+        messages = []
+        recent_history = self.message_history[-10:]
+        for msg in recent_history:
+            if msg["role"] == "user":
+                # Filter out image_url content from previous user messages
+                filtered_content = []
+                for content_item in msg["content"]:
+                    if content_item["type"] == "text":
+                        filtered_content.append(content_item)
+                filtered_msg = {"role": "user", "content": filtered_content}
+                messages.append(filtered_msg)
+            else:
+                messages.append(msg)
+
+        current_user_message = {
+            "role": "user",
+            "content": [
+                {
+                    "type": "text",
+                    "text": prompt,
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": f"data:image/png;base64,{screen_base64}"},
+                },
+            ],
+        }
+        messages.append(current_user_message)
+
+        print(f"messages: {messages}")
         completion = self.oai.chat.completions.create(
             model=self.model_name,
             max_completion_tokens=200,
             top_p=None,
-            temperature=0.0,
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        },
-                        {
-                            "type": "image_url",
-                            "image_url": {
-                                "url": f"data:image/png;base64,{screen_base64}"
-                            },
-                        },
-                    ],
-                },
-            ],
+            temperature=0.1,
+            messages=messages,
         )
         return completion
 
@@ -134,10 +148,12 @@ The current game screen is provided as an image. Analyze what's happening on scr
                 response_text = ai_response.choices[0].message.content
                 print(response_text)
 
-                # Add the response to action history
-                self.action_history.append(response_text)
+                self.message_history.append(
+                    {"role": "assistant", "content": response_text}
+                )
+                if len(self.message_history) > 100:
+                    self.message_history = self.message_history[-100:]
 
-                # Parse and execute the AI action
                 success = self.action_parser.parse_and_execute(response_text)
                 if not success:
                     self.logger.warning(

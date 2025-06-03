@@ -41,3 +41,7 @@ The `/game/` directory contains various saved states representing different prog
 - Screen captures are base64-encoded and sent to vision model for action decisions
 - AI responses are parsed to extract button sequences in format: `buttons(sequence='button1 button2')`
 - Action parser handles validation, error recovery, and PyBoy integration
+
+## Code Guidance
+
+- Do not add code comments unless the code is particularly complicated.
