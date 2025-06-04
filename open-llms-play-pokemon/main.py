@@ -5,6 +5,7 @@ import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
+from openai.types.chat import ChatCompletion
 from pyboy import PyBoy
 
 from .action_parser import ActionParser
@@ -12,27 +13,12 @@ from .action_parser import ActionParser
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
 
-class PokemonRedPlayer:
-    def __init__(
-        self,
-        headless: bool = False,
-        model_name: str = "ByteDance-Seed/UI-TARS-1.5-7B",
-    ):
+class GameEmulator:
+    def __init__(self, headless: bool = False):
         self.game_dir = os.path.join(os.path.dirname(__file__), "..", "game")
         self.game_path = os.path.join(self.game_dir, "Pokemon Red.gb")
         self.symbols_path = os.path.join(self.game_dir, "pokered.sym")
         self.headless = headless
-        self.model_name = model_name
-        self.message_history = []
-
-        # Setup logging
-        logging.basicConfig(level=logging.INFO)
-        self.logger = logging.getLogger(__name__)
-
-        self.oai = OpenAI(
-            base_url=os.getenv("OPENAI_BASE_URL") or None,
-            api_key=os.getenv("OPENAI_API_KEY"),
-        )
 
         self.pyboy = PyBoy(
             self.game_path,
@@ -45,35 +31,50 @@ class PokemonRedPlayer:
         )
         self.pyboy.set_emulation_speed(6)
 
-        # Initialize action parser
         self.action_parser = ActionParser(self.pyboy)
 
-    def _skip_intro(self) -> None:
-        """Skip the game intro sequence."""
-        self.pyboy.tick(2_000, render=False)
-        self.pyboy.button("start")
-        self.pyboy.tick(200, render=False)
-        self.pyboy.button("start")
-        self.pyboy.tick(6)
+    def load_state(self, state_name: str = "init.state") -> None:
+        """Load a game state file."""
+        with open(os.path.join(self.game_dir, state_name), "rb") as f:
+            self.pyboy.load_state(f)
 
     def get_screen_base64(self) -> str:
-        """
-        Capture the current PyBoy screen and return it as a base64 encoded string.
-
-        Returns:
-            Base64 encoded PNG image of the current screen
-        """
-        if not self.pyboy:
-            raise RuntimeError("PyBoy not initialized")
-
+        """Capture the current PyBoy screen and return it as a base64 encoded string."""
         image = self.pyboy.screen.image
+        if image is None:
+            raise RuntimeError("Failed to capture screen")
+
         buffer = io.BytesIO()
         image.save(buffer, format="PNG")
         buffer.seek(0)
         image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return image_base64
 
-    def get_ai_response(self, screen_base64: str) -> str:
+    def execute_action(self, response_text: str) -> bool:
+        """Execute an action parsed from AI response text."""
+        return self.action_parser.parse_and_execute(response_text)
+
+    def fallback_action(self) -> None:
+        """Execute fallback action when parsing fails."""
+        self.pyboy.button("a")
+        self.pyboy.tick(400, render=True)
+
+    def cleanup(self) -> None:
+        """Clean up resources."""
+        self.pyboy.stop()
+
+
+class AIAgent:
+    def __init__(self, model_name: str):
+        self.model_name = model_name
+        self.message_history = []
+
+        self.oai = OpenAI(
+            base_url=os.getenv("OPENAI_BASE_URL") or None,
+            api_key=os.getenv("OPENAI_API_KEY"),
+        )
+
+    def get_ai_response(self, screen_base64: str) -> ChatCompletion:
         prompt = """You are a GameBoy agent playing Pokemon Red. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task.
 
 ## Output Format
@@ -101,7 +102,6 @@ The current game screen is provided as an image. Analyze what's happening on scr
         recent_history = self.message_history[-10:]
         for msg in recent_history:
             if msg["role"] == "user":
-                # Filter out image_url content from previous user messages
                 filtered_content = []
                 for content_item in msg["content"]:
                     if content_item["type"] == "text":
@@ -136,31 +136,49 @@ The current game screen is provided as an image. Analyze what's happening on scr
         )
         return completion
 
+    def add_to_history(self, response_text: str) -> None:
+        """Add AI response to message history."""
+        self.message_history.append({"role": "assistant", "content": response_text})
+        if len(self.message_history) > 100:
+            self.message_history = self.message_history[-100:]
+
+
+class PokemonRedPlayer:
+    def __init__(
+        self,
+        ai_agent: AIAgent,
+        headless: bool = False,
+    ):
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger(__name__)
+
+        self.emulator = GameEmulator(headless=headless)
+        self.ai_agent = ai_agent
+
     def start_game(self) -> None:
         """Start the Pokemon Red game and get initial AI response."""
         try:
-            with open(os.path.join(self.game_dir, "init.state"), "rb") as f:
-                self.pyboy.load_state(f)
+            self.emulator.load_state("init.state")
 
             while True:
-                screen_base64 = self.get_screen_base64()
-                ai_response = self.get_ai_response(screen_base64)
+                screen_base64 = self.emulator.get_screen_base64()
+                ai_response = self.ai_agent.get_ai_response(screen_base64)
                 response_text = ai_response.choices[0].message.content
+                if not response_text:
+                    raise RuntimeError(
+                        "No response text from AI",
+                        ai_response,
+                    )
                 print(response_text)
 
-                self.message_history.append(
-                    {"role": "assistant", "content": response_text}
-                )
-                if len(self.message_history) > 100:
-                    self.message_history = self.message_history[-100:]
+                self.ai_agent.add_to_history(response_text)
 
-                success = self.action_parser.parse_and_execute(response_text)
+                success = self.emulator.execute_action(response_text)
                 if not success:
                     self.logger.warning(
                         "Action parsing/execution failed, falling back to 'a' button"
                     )
-                    self.pyboy.button("a")
-                    self.pyboy.tick(400, render=True)
+                    self.emulator.fallback_action()
 
         except Exception as e:
             print(f"Error starting game: {e}")
@@ -168,9 +186,7 @@ The current game screen is provided as an image. Analyze what's happening on scr
 
     def cleanup(self) -> None:
         """Clean up resources."""
-        if self.pyboy:
-            self.pyboy.stop()
-            self.pyboy = None
+        self.emulator.cleanup()
 
     def __enter__(self):
         """Context manager entry."""
@@ -183,7 +199,8 @@ The current game screen is provided as an image. Analyze what's happening on scr
 
 def main():
     """Main function to run the Pokemon Red player."""
-    with PokemonRedPlayer() as player:
+    ai_agent = AIAgent(model_name="anthropic/claude-sonnet-4")
+    with PokemonRedPlayer(ai_agent=ai_agent) as player:
         player.start_game()
 
 
