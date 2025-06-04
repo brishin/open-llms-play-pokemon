@@ -5,10 +5,9 @@ import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from openai.types.chat import ChatCompletion
 from pyboy import PyBoy
 
-from .action_parser import ActionParser
+from .action_parser import ActionParser, ParsedAction
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
@@ -31,8 +30,6 @@ class GameEmulator:
         )
         self.pyboy.set_emulation_speed(6)
 
-        self.action_parser = ActionParser(self.pyboy)
-
     def load_state(self, state_name: str = "init.state") -> None:
         """Load a game state file."""
         with open(os.path.join(self.game_dir, state_name), "rb") as f:
@@ -50,9 +47,40 @@ class GameEmulator:
         image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
         return image_base64
 
-    def execute_action(self, response_text: str) -> bool:
-        """Execute an action parsed from AI response text."""
-        return self.action_parser.parse_and_execute(response_text)
+    def execute_action(self, parsed_action: ParsedAction | None) -> bool:
+        """Execute a parsed action on the emulator."""
+        if parsed_action is None:
+            return False
+
+        if not parsed_action.button_sequence:
+            return True
+
+        try:
+            for i, button in enumerate(parsed_action.button_sequence):
+                if button not in {
+                    "a",
+                    "b",
+                    "start",
+                    "select",
+                    "up",
+                    "down",
+                    "left",
+                    "right",
+                }:
+                    continue
+
+                self.pyboy.button(button)
+
+                # Add ticks between buttons except for the last one
+                if i < len(parsed_action.button_sequence) - 1:
+                    self.pyboy.tick(60, render=True)
+
+            # Final tick after button sequence
+            self.pyboy.tick(60, render=True)
+            return True
+
+        except Exception:
+            return False
 
     def fallback_action(self) -> None:
         """Execute fallback action when parsing fails."""
@@ -64,17 +92,19 @@ class GameEmulator:
         self.pyboy.stop()
 
 
-class AIAgent:
+class OpenAIAgent:
     def __init__(self, model_name: str):
         self.model_name = model_name
         self.message_history = []
+        self.action_parser = ActionParser()
 
         self.oai = OpenAI(
             base_url=os.getenv("OPENAI_BASE_URL") or None,
             api_key=os.getenv("OPENAI_API_KEY"),
         )
 
-    def get_ai_response(self, screen_base64: str) -> ChatCompletion:
+    def run_step(self, screen_base64: str) -> str:
+        """Run a single step of AI decision making and return the response text."""
         prompt = """You are a GameBoy agent playing Pokemon Red. You are given a task and your action history, with screenshots. You need to perform the next action to complete the task.
 
 ## Output Format
@@ -134,19 +164,26 @@ The current game screen is provided as an image. Analyze what's happening on scr
             temperature=0.1,
             messages=messages,
         )
-        return completion
 
-    def add_to_history(self, response_text: str) -> None:
-        """Add AI response to message history."""
+        response_text = completion.choices[0].message.content
+        if not response_text:
+            raise RuntimeError("No response text from AI", completion)
+
         self.message_history.append({"role": "assistant", "content": response_text})
         if len(self.message_history) > 100:
             self.message_history = self.message_history[-100:]
+
+        return response_text
+
+    def parse_action(self, response_text: str) -> ParsedAction | None:
+        """Parse action from AI response and return parsed action or None."""
+        return self.action_parser.parse_ai_response(response_text)
 
 
 class PokemonRedPlayer:
     def __init__(
         self,
-        ai_agent: AIAgent,
+        ai_agent: OpenAIAgent,
         headless: bool = False,
     ):
         logging.basicConfig(level=logging.INFO)
@@ -162,18 +199,11 @@ class PokemonRedPlayer:
 
             while True:
                 screen_base64 = self.emulator.get_screen_base64()
-                ai_response = self.ai_agent.get_ai_response(screen_base64)
-                response_text = ai_response.choices[0].message.content
-                if not response_text:
-                    raise RuntimeError(
-                        "No response text from AI",
-                        ai_response,
-                    )
+                response_text = self.ai_agent.run_step(screen_base64)
                 print(response_text)
 
-                self.ai_agent.add_to_history(response_text)
-
-                success = self.emulator.execute_action(response_text)
+                parsed_action = self.ai_agent.parse_action(response_text)
+                success = self.emulator.execute_action(parsed_action)
                 if not success:
                     self.logger.warning(
                         "Action parsing/execution failed, falling back to 'a' button"
@@ -199,7 +229,7 @@ class PokemonRedPlayer:
 
 def main():
     """Main function to run the Pokemon Red player."""
-    ai_agent = AIAgent(model_name="anthropic/claude-sonnet-4")
+    ai_agent = OpenAIAgent(model_name="anthropic/claude-sonnet-4")
     with PokemonRedPlayer(ai_agent=ai_agent) as player:
         player.start_game()
 

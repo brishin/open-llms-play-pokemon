@@ -9,6 +9,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Run tests**: `uv run python -m pytest test_action_parser.py -v`
 - **Format code**: `uv run ruff format .`
 - **Lint code**: `uv run ruff check . --fix`
+- **Type check**: `uv run pyright`
 - **Deploy LLM server**: `modal deploy server/llm_server.py`
 - **Test LLM server**: `modal run server/llm_server.py::test`
 

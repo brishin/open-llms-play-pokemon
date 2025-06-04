@@ -2,8 +2,6 @@ import logging
 import re
 from typing import NamedTuple
 
-from pyboy import PyBoy
-
 
 class ParsedAction(NamedTuple):
     """Represents a parsed action with button sequence."""
@@ -13,21 +11,13 @@ class ParsedAction(NamedTuple):
 
 
 class ActionParser:
-    """Parser for AI-generated game actions with PyBoy integration."""
+    """Parser for AI-generated game actions."""
 
     VALID_BUTTONS = {"a", "b", "start", "select", "up", "down", "left", "right"}
     ACTION_PATTERN = re.compile(r"buttons\(['\"]([^'\"]*)['\"]", re.IGNORECASE)
 
-    def __init__(self, pyboy: PyBoy, ticks_between_buttons: int = 60):
-        """
-        Initialize the action parser.
-
-        Args:
-            pyboy: PyBoy emulator instance
-            ticks_between_buttons: Number of ticks to wait between button presses
-        """
-        self.pyboy = pyboy
-        self.ticks_between_buttons = ticks_between_buttons
+    def __init__(self):
+        """Initialize the action parser."""
         self.logger = logging.getLogger(__name__)
 
     def extract_action_from_response(self, response: str) -> str | None:
@@ -110,59 +100,3 @@ class ActionParser:
             True if all buttons are valid
         """
         return all(button in self.VALID_BUTTONS for button in sequence)
-
-    def execute_action(self, parsed_action: ParsedAction) -> bool:
-        """
-        Execute a parsed action on the PyBoy emulator.
-
-        Args:
-            parsed_action: ParsedAction containing button sequence
-
-        Returns:
-            True if execution succeeded, False otherwise
-        """
-        if not parsed_action.button_sequence:
-            self.logger.info("No buttons to execute")
-            return True
-
-        try:
-            self.logger.info(
-                f"Executing button sequence: {' '.join(parsed_action.button_sequence)}"
-            )
-
-            for i, button in enumerate(parsed_action.button_sequence):
-                if button not in self.VALID_BUTTONS:
-                    self.logger.warning(f"Skipping invalid button: {button}")
-                    continue
-
-                self.logger.debug(f"Pressing button: {button}")
-                self.pyboy.button(button)
-
-                # Add ticks between buttons except for the last one
-                if i < len(parsed_action.button_sequence) - 1:
-                    self.pyboy.tick(self.ticks_between_buttons, render=True)
-
-            # Final tick after button sequence
-            self.pyboy.tick(self.ticks_between_buttons, render=True)
-            return True
-
-        except Exception as e:
-            self.logger.error(f"Error executing action: {e}")
-            return False
-
-    def parse_and_execute(self, response: str) -> bool:
-        """
-        Parse AI response and execute the action in one call.
-
-        Args:
-            response: Full AI response text
-
-        Returns:
-            True if parsing and execution succeeded, False otherwise
-        """
-        parsed_action = self.parse_ai_response(response)
-        if parsed_action is None:
-            self.logger.warning("Failed to parse action from response")
-            return False
-
-        return self.execute_action(parsed_action)
