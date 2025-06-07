@@ -7,7 +7,7 @@ class ParsedAction(NamedTuple):
     """Represents a parsed action with button sequence."""
 
     button_sequence: list[str]
-    raw_action: str
+    sequence_str: str
 
 
 class ActionParser:
@@ -20,49 +20,17 @@ class ActionParser:
         """Initialize the action parser."""
         self.logger = logging.getLogger(__name__)
 
-    def extract_action_from_response(self, response: str) -> str | None:
+    def parse_button_action(self, sequence_str: str) -> ParsedAction | None:
         """
-        Extract action line from AI response.
+        Parse button action string directly.
 
         Args:
-            response: Full AI response containing Thought: and Action: sections
-
-        Returns:
-            Action line content or None if not found
-        """
-        lines = response.strip().split("\n")
-        for line in lines:
-            line = line.strip()
-            if line.lower().startswith("action:"):
-                return line[7:].strip()  # Remove "Action:" prefix
-        return None
-
-    def parse_ai_response(self, response: str) -> ParsedAction | None:
-        """
-        Parse AI response and extract button sequence.
-
-        Args:
-            response: Full AI response text
+            button_action: Button action string like "buttons('a b')"
 
         Returns:
             ParsedAction with button sequence or None if parsing fails
         """
         try:
-            action_line = self.extract_action_from_response(response)
-            if not action_line:
-                self.logger.warning("No action line found in response")
-                return None
-
-            match = self.ACTION_PATTERN.search(action_line)
-            if not match:
-                self.logger.warning(f"No buttons() action found in: {action_line}")
-                return None
-
-            sequence_str = match.group(1).strip()
-            if not sequence_str:
-                self.logger.info("Empty button sequence")
-                return ParsedAction([], action_line)
-
             # Split and validate button sequence
             buttons = [
                 btn.strip().lower() for btn in sequence_str.split() if btn.strip()
@@ -83,10 +51,10 @@ class ActionParser:
                     return None
 
             self.logger.info(f"Parsed button sequence: {buttons}")
-            return ParsedAction(buttons, action_line)
+            return ParsedAction(buttons, sequence_str)
 
         except Exception as e:
-            self.logger.error(f"Error parsing AI response: {e}")
+            self.logger.error(f"Error parsing button action: {e}")
             return None
 
     def validate_button_sequence(self, sequence: list[str]) -> bool:

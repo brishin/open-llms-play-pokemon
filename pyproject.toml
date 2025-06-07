@@ -9,15 +9,18 @@ dependencies = [
     "openai>=1.82.0",
     "pillow>=11.2.1",
     "pyboy>=2.6.0",
+    "dspy-ai>=2.6.27",
 ]
 
 [dependency-groups]
 dev = [
     "modal>=1.0.2",
-    "pytest>=8.4.0",
-    "ruff>=0.8.0",
-    "pyright>=1.1.400",
+ "pytest>=8.4.0",
+ "ruff>=0.8.0",
+ "pyright>=1.1.400",
+ "mlflow>=2.22.1",
 ]
+
 
 [tool.ruff]
 target-version = "py310"

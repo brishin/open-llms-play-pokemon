@@ -1,95 +1,13 @@
-import base64
-import io
 import logging
 import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from pyboy import PyBoy
 
 from .action_parser import ActionParser, ParsedAction
+from .game_emulator import GameEmulator
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
-
-
-class GameEmulator:
-    def __init__(self, headless: bool = False):
-        self.game_dir = os.path.join(os.path.dirname(__file__), "..", "game")
-        self.game_path = os.path.join(self.game_dir, "Pokemon Red.gb")
-        self.symbols_path = os.path.join(self.game_dir, "pokered.sym")
-        self.headless = headless
-
-        self.pyboy = PyBoy(
-            self.game_path,
-            debug=False,
-            no_input=False,
-            window="null" if self.headless else "SDL2",
-            log_level="CRITICAL",
-            symbols=self.symbols_path,
-            sound_emulated=False,
-        )
-        self.pyboy.set_emulation_speed(6)
-
-    def load_state(self, state_name: str = "init.state") -> None:
-        """Load a game state file."""
-        with open(os.path.join(self.game_dir, state_name), "rb") as f:
-            self.pyboy.load_state(f)
-
-    def get_screen_base64(self) -> str:
-        """Capture the current PyBoy screen and return it as a base64 encoded string."""
-        image = self.pyboy.screen.image
-        if image is None:
-            raise RuntimeError("Failed to capture screen")
-
-        buffer = io.BytesIO()
-        image.save(buffer, format="PNG")
-        buffer.seek(0)
-        image_base64 = base64.b64encode(buffer.getvalue()).decode("utf-8")
-        return image_base64
-
-    def execute_action(self, parsed_action: ParsedAction | None) -> bool:
-        """Execute a parsed action on the emulator."""
-        if parsed_action is None:
-            return False
-
-        if not parsed_action.button_sequence:
-            return True
-
-        try:
-            for i, button in enumerate(parsed_action.button_sequence):
-                if button not in {
-                    "a",
-                    "b",
-                    "start",
-                    "select",
-                    "up",
-                    "down",
-                    "left",
-                    "right",
-                }:
-                    continue
-
-                self.pyboy.button(button)
-
-                # Add ticks between buttons except for the last one
-                if i < len(parsed_action.button_sequence) - 1:
-                    self.pyboy.tick(60, render=True)
-
-            # Final tick after button sequence
-            self.pyboy.tick(60, render=True)
-            return True
-
-        except Exception:
-            return False
-
-    def fallback_action(self) -> None:
-        """Execute fallback action when parsing fails."""
-        self.pyboy.button("a")
-        self.pyboy.tick(400, render=True)
-
-    def cleanup(self) -> None:
-        """Clean up resources."""
-        self.pyboy.stop()
 
 
 class OpenAIAgent:
@@ -177,7 +95,8 @@ The current game screen is provided as an image. Analyze what's happening on scr
 
     def parse_action(self, response_text: str) -> ParsedAction | None:
         """Parse action from AI response and return parsed action or None."""
-        return self.action_parser.parse_ai_response(response_text)
+        # return self.action_parser.parse_ai_response(response_text)
+        return None
 
 
 class PokemonRedPlayer:
