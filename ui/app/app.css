@@ -1,1 +1,29 @@
+@layer base, utils, components;
+
+@import "@webtui/css/base.css";
+
+/* Utils */
+@import "@webtui/css/utils/box.css";
+
+/* Components */
+@import "@webtui/css/components/button.css";
+@import "@webtui/css/components/typography.css";
+
+@import "@webtui/theme-catppuccin";
+
 @import "tailwindcss";
+
+@theme {
+  --spacing: 1ch;
+}
+
+@layer components {
+  a[data-active="true"] {
+    font-weight: var(--font-weight-bold);
+  }
+
+  span[variant-="background"] {
+    background-color: var(--background0);
+    padding: 0 1ch;
+  }
+}

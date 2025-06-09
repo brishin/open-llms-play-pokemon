@@ -1,19 +1,20 @@
 import type { Route } from "./+types/home";
 
 export function loader() {
-  return { name: "React Router" };
+	return { name: "React Router" };
 }
 
 export default function Home({ loaderData }: Route.ComponentProps) {
-  return (
-    <div className="text-center p-4">
-      <h1 className="text-2xl">Hello, {loaderData.name}</h1>
-      <a
-        className="block mt-2 text-blue-500 underline hover:text-blue-600"
-        href="https://reactrouter.com/docs"
-      >
-        React Router Docs
-      </a>
-    </div>
-  );
+	return (
+		<div className="flex-row gap-1 grow">
+			<nav box-="square" shear-="top" className="max-w-32 grow px-2">
+				<span variant-="background">Traces</span>
+				<div className="mt-[1lh] px-1">
+					<div className="flex-row gap-[1lh] overflow-y-auto">
+						<a href="/">Test</a>
+					</div>
+				</div>
+			</nav>
+		</div>
+	);
 }
