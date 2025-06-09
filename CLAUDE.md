@@ -61,3 +61,4 @@ The DSPy version (`main_dspy.py`) provides a more structured approach with:
 
 - Do not add code comments unless the code is particularly complicated.
 - **IMPORTANT**: Always run `./check.sh` after making code changes to ensure formatting, linting, and type checking pass.
+- **DSPy Development**: When working with DSPy framework, reference `.cursor/rules/dspy.mdc` for best practices and guidelines.

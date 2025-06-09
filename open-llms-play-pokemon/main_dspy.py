@@ -59,7 +59,7 @@ class PokemonRedDSPyAgent(dspy.Module):
         """Press a sequence of buttons on the Game Boy controller.
 
         Args:
-            sequence: Space-separated button sequence (e.g., "a b up down", "a", "right right"). Valid buttons: a, b, start, select, up, down, left, right.
+            sequence: Space-separated button sequence (e.g., "a b up down", "a", "right right"). Valid buttons: a, b, start, select, up, down, left, right. Prefer giving up to three buttons at a time.
 
         Returns:
             Confirmation message
@@ -79,7 +79,7 @@ class PokemonRedDSPyAgent(dspy.Module):
         mlflow.log_image(new_screenshot, f"screenshot_{self.screenshot_counter}.png")
         return {
             "message": f"Successfully pressed buttons: {buttons}",
-            "new_screenshot": new_screenshot,
+            "new_screenshot": dspy.Image.from_PIL(new_screenshot),
         }
 
 
