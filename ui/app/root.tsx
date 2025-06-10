@@ -19,8 +19,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body>
-        <nav box-="square" className="flex justify-between p-2">
+      <body className="px-[1ch]">
+        <nav
+          box-="square"
+          className="flex justify-between px-[2ch] py-[1lh] bg-background1"
+        >
           <p>Open LLMs Play Pokemon</p>
           <div className="flex gap-2">
             <a href="/" data-active="true">

@@ -26,10 +26,10 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-row gap-1 h-full">
       <TracesNav runs={loaderData.runs} />
-      <div className="grow px-2 gap-[1lh]" box-="square" shear-="top">
+      <div className="grow px-2 bg-background1" box-="square" shear-="top">
         <span variant-="background">Run Details</span>
 
-        <div className="flex flex-col my-[1lh] gap-[1lh]">
+        <div className="flex flex-col mt-[1lh]">
           <div>
             <div className="">
               <div>

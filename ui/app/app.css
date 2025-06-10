@@ -33,3 +33,9 @@
     font-weight: var(--font-weight-bold);
   }
 }
+
+@layer utils {
+  [box-="square"].bg-background1 {
+    --box-border-color: var(--background1);
+  }
+}
