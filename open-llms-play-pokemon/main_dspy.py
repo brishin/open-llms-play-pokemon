@@ -152,7 +152,7 @@ def main():
     logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
     """Main function to run the DSPy-based Pokemon Red player."""
-    with PokemonRedDSPyPlayer() as player:
+    with PokemonRedDSPyPlayer() as player, mlflow.start_run():
         player.start_game()
 
 
