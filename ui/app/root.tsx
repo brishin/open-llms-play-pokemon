@@ -8,6 +8,7 @@ import {
 } from 'react-router';
 
 import type { Route } from './+types/root';
+import { BoxContainer } from './components/BoxContainer';
 import './app.css';
 
 export function Layout({ children }: { children: React.ReactNode }) {
@@ -20,17 +21,14 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="px-[1ch]">
-        <nav
-          box-="square"
-          className="flex justify-between px-[2ch] py-[1lh] bg-background1"
-        >
+        <BoxContainer as="nav" className="flex justify-between px-[2ch] py-[1lh]">
           <p>Open LLMs Play Pokemon</p>
           <div className="flex gap-2">
             <a href="/" data-active="true">
               <span>Experiments</span>
             </a>
           </div>
-        </nav>
+        </BoxContainer>
         {children}
         <ScrollRestoration />
         <Scripts />

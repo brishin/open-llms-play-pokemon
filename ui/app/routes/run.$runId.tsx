@@ -1,6 +1,7 @@
 import TracesNav from '~/components/ExperimentsNav';
 import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/MLFlowClient';
+import { BoxContainer } from '~/components/BoxContainer';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');
@@ -26,7 +27,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
   return (
     <div className="flex flex-row gap-1 h-full">
       <TracesNav runs={loaderData.runs} />
-      <div className="grow px-2 bg-background1" box-="square" shear-="top">
+      <BoxContainer shear="top" className="grow px-2">
         <span variant-="background">Run Details</span>
 
         <div className="flex flex-col mt-[1lh]">
@@ -55,7 +56,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
           </div>
           <div is-="separator" direction-="x" />
         </div>
-      </div>
+      </BoxContainer>
     </div>
   );
 }
