@@ -1,6 +1,6 @@
 import type { Route } from './+types/_index';
 import MLFlowClient from '~/MLFlowClient';
-import TracesNav from '~/components/TracesNav';
+import TracesNav from '~/components/ExperimentsNav';
 
 export async function loader() {
   const mlflow = new MLFlowClient('http://localhost:8080');

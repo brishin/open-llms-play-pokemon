@@ -1,18 +1,27 @@
-import TracesNav from '~/components/TracesNav';
+import TracesNav from '~/components/ExperimentsNav';
 import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/MLFlowClient';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');
   const experiment = await mlflow.getExperiment('open-llms-play-pokemon');
-  const runs = await mlflow.listRuns(experiment.experiment_id);
-  const run = await mlflow.getRun(params.runId);
-  return { runs, run };
+  const [runs, run, artifacts, traces] = await Promise.all([
+    mlflow.listRuns(experiment.experiment_id),
+    mlflow.getRun(params.runId),
+    mlflow.getArtifacts(params.runId),
+    mlflow.getTraces({
+      experimentIds: [experiment.experiment_id],
+      orderBy: 'timestamp_ms DESC',
+      sourceRun: params.runId,
+    }),
+  ]);
+  console.log(JSON.stringify(run, null, 2));
+  const modelName = run.data.tags?.find((tag) => tag.key === 'llm_name')?.value;
+  return { runs, run, modelName };
 }
 
 export default function RunDetail({ loaderData }: Route.ComponentProps) {
   const { run } = loaderData;
-  console.log(run);
 
   return (
     <div className="flex flex-row gap-1 h-full">
@@ -22,19 +31,15 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
 
         <div className="flex flex-col my-[1lh] gap-[1lh]">
           <div>
-            <h2 className="mb-[1lh]">Run Information</h2>
             <div className="">
               <div>
-                <strong>Name:</strong> {run.info.run_name}
+                <strong>Name:</strong> {run.info.run_name} ({run.info.run_id})
               </div>
               <div>
-                <strong>ID:</strong> {run.info.run_id}
+                <strong>Model:</strong> {loaderData.modelName ?? 'Unknown'}
               </div>
               <div>
                 <strong>Status:</strong> {run.info.status}
-              </div>
-              <div>
-                <strong>User:</strong> {run.info.user_id}
               </div>
               <div>
                 <strong>Start Time:</strong>{' '}
@@ -48,37 +53,8 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
               )}
             </div>
           </div>
-
-          <div>
-            <h2 className="mb-2">Parameters</h2>
-            <div className="space-y-1">
-              {Object.entries(run.data.params ?? {}).map(([key, value]) => (
-                <div key={key}>
-                  <strong>{key}:</strong> {value}
-                </div>
-              ))}
-            </div>
-          </div>
+          <div is-="separator" direction-="x" />
         </div>
-
-        {run.data.metrics?.length && (
-          <div className="mt-6">
-            <h2 className="mb-2">Metrics</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {run.data.metrics?.map((metric, index) => (
-                <div key={`${metric.key}-${index}`} className="border p-3 rounded">
-                  <div>
-                    <strong>{metric.key}:</strong> {metric.value}
-                  </div>
-                  <div className="text-sm text-gray-600">Step: {metric.step}</div>
-                  <div className="text-sm text-gray-600">
-                    Time: {new Date(metric.timestamp).toLocaleString()}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
     </div>
   );

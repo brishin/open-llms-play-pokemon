@@ -8,6 +8,7 @@
 /* Components */
 @import "@webtui/css/components/button.css";
 @import "@webtui/css/components/typography.css";
+@import "@webtui/css/components/separator.css";
 
 @import "@webtui/theme-catppuccin";
 

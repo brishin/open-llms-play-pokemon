@@ -88,8 +88,10 @@ class PokemonRedDSPyPlayer:
         self.logger = logging.getLogger(__name__)
 
         # Set up DSPy language model
+        model_name = "openrouter/google/gemini-2.5-pro-preview"
+        mlflow.set_tag("llm_name", model_name)
         lm = dspy.LM(
-            model="openrouter/google/gemini-2.5-pro-preview",
+            model=model_name,
             api_base="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
             max_tokens=1_000,
@@ -152,7 +154,7 @@ def main():
     logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
     """Main function to run the DSPy-based Pokemon Red player."""
-    with PokemonRedDSPyPlayer() as player, mlflow.start_run():
+    with mlflow.start_run(), PokemonRedDSPyPlayer() as player:
         player.start_game()
 
 
