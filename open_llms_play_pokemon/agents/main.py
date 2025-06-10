@@ -4,8 +4,8 @@ import os
 from dotenv import load_dotenv
 from openai import OpenAI
 
-from .action_parser import ActionParser, ParsedAction
-from .game_emulator import GameEmulator
+from ..emulation.action_parser import ActionParser, ParsedAction
+from ..emulation.game_emulator import GameEmulator
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
