@@ -6,8 +6,9 @@ and evaluation examples.
 """
 
 from dataclasses import dataclass
-from enum import Enum
 from typing import Any
+
+import dspy
 
 
 @dataclass
@@ -28,26 +29,26 @@ class PokemonRedGameState:
     badges_binary: int  # Binary representation of badges
     event_flags: list[int]  # Event flags as list of bits (0 or 1)
 
-    is_in_battle: bool
+    is_in_battle: int
     player_mon_hp: tuple | None = None  # (current, max)
     enemy_mon_hp: tuple | None = None  # (current, max)
 
 
-class GameStateContext(Enum):
-    """Enumeration of different game state contexts."""
+class PokemonRedExample(dspy.Example):
+    """Example for Pokemon Red evaluation"""
 
-    OVERWORLD = "overworld"
-    BATTLE = "battle"
-    MENU = "menu"
-    DIALOGUE = "dialogue"
-
-
-@dataclass
-class PokemonRedExample:
-    """Represents an example for Pokemon Red evaluation."""
-
-    initial_state: PokemonRedGameState
-    final_state: PokemonRedGameState
-    actions_taken: list[str]
-    time_elapsed: float
-    success_criteria: dict[str, Any]
+    def __init__(
+        self,
+        initial_state: PokemonRedGameState,
+        final_state: PokemonRedGameState,
+        actions_taken: list[str],
+        time_elapsed: float,
+        success_criteria: dict[str, Any],
+    ):
+        super().__init__(
+            initial_state=initial_state,
+            final_state=final_state,
+            actions_taken=actions_taken,
+            time_elapsed=time_elapsed,
+            success_criteria=success_criteria,
+        )

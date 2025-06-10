@@ -68,7 +68,7 @@ class PokemonRedMemoryReader:
         party_count = memory_view[MEMORY_ADDRESSES["party_count"]]
         badges_binary = memory_view[MEMORY_ADDRESSES["obtained_badges"]]
         badges_count = bin(badges_binary).count("1")
-        is_in_battle = bool(memory_view[MEMORY_ADDRESSES["is_in_battle"]])
+        is_in_battle = memory_view[MEMORY_ADDRESSES["is_in_battle"]]
         current_map = memory_view[MEMORY_ADDRESSES["current_map"]]
         player_x = memory_view[MEMORY_ADDRESSES["x_coord"]]
         player_y = memory_view[MEMORY_ADDRESSES["y_coord"]]
@@ -102,7 +102,7 @@ class PokemonRedMemoryReader:
         # Battle state
         player_mon_hp = None
         enemy_mon_hp = None
-        if is_in_battle:
+        if is_in_battle == 1:
             # Read battle HP values using bulk method
             battle_addrs = [
                 MEMORY_ADDRESSES["battle_mon_hp"],

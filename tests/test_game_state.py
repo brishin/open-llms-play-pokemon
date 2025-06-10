@@ -32,7 +32,7 @@ def test_memory_reader_with_init_state():
         assert game_state.party_count >= 0
         assert game_state.badges_obtained >= 0
         assert isinstance(game_state.event_flags, list)
-        assert game_state.is_in_battle in [0, 1]
+        assert isinstance(game_state.is_in_battle, bool)
 
         print(f"Game state: {game_state}")
 
