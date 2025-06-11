@@ -23,7 +23,7 @@ def test_memory_reader_with_init_state():
     try:
         with open("game/init.state", "rb") as state_file:
             pyboy.load_state(state_file)
-        game_state = PokemonRedMemoryReader.parse_game_state(pyboy.memory)
+        game_state = PokemonRedMemoryReader.parse_game_state(pyboy)
 
         assert isinstance(game_state, PokemonRedGameState)
         assert game_state.current_map >= 0

@@ -5,7 +5,8 @@ This module provides utilities for reading Pokemon Red game state from memory/sy
 Contains memory addresses from pokered.sym for accurate game state assessment.
 """
 
-from pyboy import PyBoyMemoryView
+from pyboy import PyBoy, PyBoyMemoryView
+from pyboy.plugins.game_wrapper_pokemon_gen1 import GameWrapperPokemonGen1
 
 from .game_state import PokemonRedGameState
 
@@ -61,10 +62,10 @@ class PokemonRedMemoryReader:
     """Utility class to read Pokemon Red game state from memory/symbols"""
 
     @staticmethod
-    def parse_game_state(memory_view: PyBoyMemoryView) -> PokemonRedGameState:
+    def parse_game_state(pyboy: PyBoy) -> PokemonRedGameState:
         """Parse raw memory data into structured game state"""
+        memory_view = pyboy.memory
 
-        # Read basic game state values
         party_count = memory_view[MEMORY_ADDRESSES["party_count"]]
         badges_binary = memory_view[MEMORY_ADDRESSES["obtained_badges"]]
         badges_count = bin(badges_binary).count("1")
@@ -95,6 +96,12 @@ class PokemonRedMemoryReader:
                 memory_view, max_hp_addrs[:count]
             )
             party_hp = list(zip(current_hps, max_hps, strict=True))
+
+        game_wrapper = pyboy.game_wrapper
+        if isinstance(game_wrapper, GameWrapperPokemonGen1):
+            print(game_wrapper)
+            print(game_wrapper.game_area())
+            print(game_wrapper.game_area_collision())
 
         # Read event flags using helper method
         event_flags = PokemonRedMemoryReader._read_event_bits(memory_view)

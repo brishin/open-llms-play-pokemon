@@ -5,8 +5,7 @@ This module defines the data structures for representing Pokemon Red game states
 and evaluation examples.
 """
 
-from dataclasses import dataclass
-from enum import Enum
+from dataclasses import dataclass, field
 from typing import Any
 
 
@@ -26,20 +25,11 @@ class PokemonRedGameState:
 
     badges_obtained: int
     badges_binary: int  # Binary representation of badges
-    event_flags: list[int]  # Event flags as list of bits (0 or 1)
+    event_flags: list[int] = field(repr=False)  # Event flags as list of bits (0 or 1)
 
     is_in_battle: bool
     player_mon_hp: tuple | None = None  # (current, max)
     enemy_mon_hp: tuple | None = None  # (current, max)
-
-
-class GameStateContext(Enum):
-    """Enumeration of different game state contexts."""
-
-    OVERWORLD = "overworld"
-    BATTLE = "battle"
-    MENU = "menu"
-    DIALOGUE = "dialogue"
 
 
 @dataclass
