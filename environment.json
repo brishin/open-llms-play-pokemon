@@ -1,0 +1,159 @@
+{
+  "$schema": "https://docs.cursor.com/schemas/environment.json",
+  "name": "Pokemon AI Agent",
+  "description": "AI agent that plays Pokemon Red using vision-language models with PyBoy emulator",
+  "python": {
+    "pythonPath": "python",
+    "requirements": "pyproject.toml",
+    "packageManager": "uv"
+  },
+  "node": {
+    "version": "20",
+    "packageManager": "pnpm",
+    "workspaces": ["ui"]
+  },
+  "environmentVariables": {
+    "OPENAI_BASE_URL": {
+      "description": "Base URL for the LLM server API endpoint",
+      "required": true
+    },
+    "OPENAI_API_KEY": {
+      "description": "API key for accessing the LLM server",
+      "required": true
+    }
+  },
+  "tasks": {
+    "install": {
+      "name": "Install Dependencies",
+      "description": "Install Python and Node.js dependencies",
+      "steps": [
+        {
+          "name": "Install Python dependencies",
+          "command": "uv sync"
+        },
+        {
+          "name": "Install UI dependencies",
+          "command": "cd ui && pnpm install"
+        }
+      ]
+    },
+    "dev": {
+      "name": "Development Mode",
+      "description": "Start development servers for both backend and UI",
+      "steps": [
+        {
+          "name": "Start UI development server",
+          "command": "cd ui && pnpm run dev",
+          "background": true
+        }
+      ]
+    },
+    "play": {
+      "name": "Run Pokemon Player",
+      "description": "Run the main Pokemon AI agent",
+      "command": "python -m open_llms_play_pokemon.agents.main"
+    },
+    "play-dspy": {
+      "name": "Run DSPy Pokemon Player", 
+      "description": "Run the DSPy-based Pokemon AI agent with structured reasoning",
+      "command": "python -m open_llms_play_pokemon.agents.main_dspy"
+    },
+    "test": {
+      "name": "Run Tests",
+      "description": "Run all tests with verbose output",
+      "command": "uv run pytest tests/ -v"
+    },
+    "test-action-parser": {
+      "name": "Test Action Parser",
+      "description": "Run specific action parser tests",
+      "command": "uv run pytest tests/test_action_parser.py -v"
+    },
+    "check": {
+      "name": "Code Quality Check",
+      "description": "Run all code quality checks (format, lint, typecheck)",
+      "command": "./check.sh"
+    },
+    "format": {
+      "name": "Format Code",
+      "description": "Format code using ruff",
+      "command": "uv run ruff format ."
+    },
+    "lint": {
+      "name": "Lint Code",
+      "description": "Lint code using ruff with auto-fix",
+      "command": "uv run ruff check . --fix"
+    },
+    "typecheck": {
+      "name": "Type Check",
+      "description": "Type check using pyright",
+      "command": "uv run pyright"
+    },
+    "deploy-server": {
+      "name": "Deploy LLM Server",
+      "description": "Deploy the LLM server to Modal",
+      "command": "modal deploy inference/llm_server.py"
+    },
+    "test-server": {
+      "name": "Test LLM Server",
+      "description": "Test the LLM server deployment",
+      "command": "modal run inference/llm_server.py::test"
+    },
+    "build-ui": {
+      "name": "Build UI",
+      "description": "Build the React UI for production",
+      "command": "cd ui && pnpm run build"
+    },
+    "start-ui": {
+      "name": "Start UI Production",
+      "description": "Start the built UI in production mode",
+      "command": "cd ui && pnpm run start"
+    },
+    "typecheck-ui": {
+      "name": "Type Check UI",
+      "description": "Type check the React UI",
+      "command": "cd ui && pnpm run typecheck"
+    }
+  },
+  "ports": [
+    {
+      "port": 5173,
+      "name": "UI Development Server",
+      "description": "React development server"
+    },
+    {
+      "port": 3000,
+      "name": "UI Production Server", 
+      "description": "React production server"
+    }
+  ],
+  "extensions": [
+    "ms-python.python",
+    "ms-python.black-formatter",
+    "charliermarsh.ruff",
+    "ms-pyright.pyright",
+    "bradlc.vscode-tailwindcss",
+    "esbenp.prettier-vscode"
+  ],
+  "settings": {
+    "python.defaultInterpreterPath": "./venv/bin/python",
+    "python.terminal.activateEnvironment": true,
+    "ruff.format.args": ["--line-length=88"],
+    "ruff.lint.args": ["--select=E,W,F,I,B,C4,UP"],
+    "files.exclude": {
+      "**/__pycache__": true,
+      "**/node_modules": true,
+      ".venv": true,
+      "build": true,
+      "game": true,
+      "mlruns": true,
+      "mlartifacts": true
+    },
+    "search.exclude": {
+      "**/node_modules": true,
+      "**/.venv": true,
+      "**/mlruns": true,
+      "**/mlartifacts": true,
+      "**/game": true
+    }
+  }
+}
