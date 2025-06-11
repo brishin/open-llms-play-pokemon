@@ -1,7 +1,6 @@
 {
   "$schema": "https://docs.cursor.com/schemas/environment.json",
   "name": "Pokemon AI Agent",
-  "description": "AI agent that plays Pokemon Red using vision-language models with PyBoy emulator",
   "python": {
     "pythonPath": "python",
     "requirements": "pyproject.toml",
