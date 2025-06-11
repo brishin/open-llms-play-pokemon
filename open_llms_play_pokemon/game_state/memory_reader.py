@@ -5,9 +5,27 @@ This module provides utilities for reading Pokemon Red game state from memory/sy
 Contains memory addresses from pokered.sym for accurate game state assessment.
 """
 
-from pyboy import PyBoyMemoryView
+from typing import Optional
+
+# Try to import PyBoy components
+try:
+    from pyboy import PyBoyMemoryView
+    PYBOY_AVAILABLE = True
+except ImportError:
+    PyBoyMemoryView = None
+    PYBOY_AVAILABLE = False
 
 from .game_state import PokemonRedGameState
+
+# Try to import tile reading capabilities
+try:
+    from .tile_reader import TileReader
+    from .tile_data import TileMatrix
+    TILE_READING_AVAILABLE = True
+except ImportError:
+    TILE_READING_AVAILABLE = False
+    TileReader = None
+    TileMatrix = None
 
 MEMORY_ADDRESSES = {
     "player_name": 0xD158,
@@ -60,9 +78,38 @@ MEMORY_ADDRESSES = {
 class PokemonRedMemoryReader:
     """Utility class to read Pokemon Red game state from memory/symbols"""
 
+    def __init__(self, pyboy=None):
+        """
+        Initialize the memory reader.
+        
+        Args:
+            pyboy: PyBoy instance for tile reading (optional)
+        """
+        if not PYBOY_AVAILABLE:
+            if pyboy is not None:
+                raise ImportError("PyBoy is not available but was provided")
+        
+        self.tile_reader = None
+        if TILE_READING_AVAILABLE and pyboy is not None:
+            self.tile_reader = TileReader(pyboy)
+
+    def set_pyboy(self, pyboy) -> None:
+        """Set PyBoy instance for tile reading."""
+        if not PYBOY_AVAILABLE:
+            raise ImportError("PyBoy is not available")
+        
+        if TILE_READING_AVAILABLE:
+            if self.tile_reader is None:
+                self.tile_reader = TileReader(pyboy)
+            else:
+                self.tile_reader.set_pyboy(pyboy)
+
     @staticmethod
-    def parse_game_state(memory_view: PyBoyMemoryView) -> PokemonRedGameState:
+    def parse_game_state(memory_view) -> PokemonRedGameState:
         """Parse raw memory data into structured game state"""
+        
+        if not PYBOY_AVAILABLE:
+            raise ImportError("PyBoy is required for memory reading")
 
         # Read basic game state values
         party_count = memory_view[MEMORY_ADDRESSES["party_count"]]
@@ -133,14 +180,111 @@ class PokemonRedMemoryReader:
             event_flags=event_flags,
         )
 
+    def parse_game_state_with_tiles(self, memory_view) -> tuple[PokemonRedGameState, Optional['TileMatrix']]:
+        """
+        Parse game state and include tile data if available.
+        
+        Args:
+            memory_view: PyBoy memory view
+            
+        Returns:
+            Tuple of (game_state, tile_matrix)
+            tile_matrix will be None if tile reading is not available
+        """
+        if not PYBOY_AVAILABLE:
+            raise ImportError("PyBoy is required for memory reading")
+        
+        game_state = self.parse_game_state(memory_view)
+        
+        tile_matrix = None
+        if self.tile_reader is not None:
+            try:
+                tile_matrix = self.tile_reader.get_tile_matrix(game_state)
+            except Exception as e:
+                # If tile reading fails, continue without it
+                print(f"Warning: Could not read tile data: {e}")
+        
+        return game_state, tile_matrix
+
+    def get_comprehensive_game_data(self, memory_view) -> dict:
+        """
+        Get comprehensive game data including tile information in serializable format.
+        
+        Args:
+            memory_view: PyBoy memory view
+            
+        Returns:
+            Dictionary containing all game data ready for serialization
+        """
+        if not PYBOY_AVAILABLE:
+            raise ImportError("PyBoy is required for memory reading")
+        
+        game_state, tile_matrix = self.parse_game_state_with_tiles(memory_view)
+        
+        data = {
+            'game_state': {
+                'player_name': game_state.player_name,
+                'current_map': game_state.current_map,
+                'player_x': game_state.player_x,
+                'player_y': game_state.player_y,
+                'party_count': game_state.party_count,
+                'party_pokemon_levels': game_state.party_pokemon_levels,
+                'party_pokemon_hp': game_state.party_pokemon_hp,
+                'badges_obtained': game_state.badges_obtained,
+                'badges_binary': game_state.badges_binary,
+                'is_in_battle': game_state.is_in_battle,
+                'player_mon_hp': game_state.player_mon_hp,
+                'enemy_mon_hp': game_state.enemy_mon_hp,
+                'event_flags': game_state.event_flags,
+            },
+            'tile_data': None,
+            'analysis': None
+        }
+        
+        if tile_matrix is not None:
+            data['tile_data'] = tile_matrix.to_dict()
+            
+            # Add quick analysis
+            if self.tile_reader is not None:
+                try:
+                    analysis = self.tile_reader.analyze_area_around_player(game_state)
+                    data['analysis'] = analysis
+                except Exception as e:
+                    print(f"Warning: Could not analyze area: {e}")
+        
+        return data
+
+    def get_tile_matrix(self, memory_view) -> Optional['TileMatrix']:
+        """
+        Get just the tile matrix data.
+        
+        Args:
+            memory_view: PyBoy memory view
+            
+        Returns:
+            TileMatrix or None if not available
+        """
+        if not PYBOY_AVAILABLE:
+            raise ImportError("PyBoy is required for memory reading")
+        
+        if self.tile_reader is None:
+            return None
+        
+        game_state = self.parse_game_state(memory_view)
+        try:
+            return self.tile_reader.get_tile_matrix(game_state)
+        except Exception as e:
+            print(f"Warning: Could not read tile matrix: {e}")
+            return None
+
     @staticmethod
-    def _read_16bit(memory_view: PyBoyMemoryView, start_addr: int) -> int:
+    def _read_16bit(memory_view, start_addr: int) -> int:
         hp_bytes = memory_view[start_addr : start_addr + 2]
         return hp_bytes[0] + (hp_bytes[1] << 8)
 
     @staticmethod
     def _read_multiple_16bit(
-        memory_view: PyBoyMemoryView, addresses: list[int]
+        memory_view, addresses: list[int]
     ) -> list[int]:
         """Read multiple 16-bit values efficiently"""
         values = []
@@ -150,7 +294,7 @@ class PokemonRedMemoryReader:
         return values
 
     @staticmethod
-    def _read_event_bits(memory_view: PyBoyMemoryView) -> list[int]:
+    def _read_event_bits(memory_view) -> list[int]:
         """Read all event flag bits using slice syntax"""
         start_addr = MEMORY_ADDRESSES["event_flags_start"]
         end_addr = MEMORY_ADDRESSES["event_flags_end"]
