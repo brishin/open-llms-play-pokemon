@@ -1,0 +1,4 @@
+{
+  "name": "open-llms-play-pokemon",
+  "install": "uv sync && cd ui && pnpm install"
+}

@@ -46,7 +46,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pyright]
-include = ["open-llms-play-pokemon", "server"]
+include = ["open_llms_play_pokemon", "inference"]
 exclude = ["build", "game", ".venv"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"

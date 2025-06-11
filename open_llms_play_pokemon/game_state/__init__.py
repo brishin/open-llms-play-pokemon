@@ -1,8 +1,7 @@
-from .game_state import PokemonRedExample, PokemonRedGameState
+from .game_state import PokemonRedGameState
 from .memory_reader import PokemonRedMemoryReader
 
 __all__ = [
-    "PokemonRedExample",
     "PokemonRedGameState",
     "PokemonRedMemoryReader",
 ]
