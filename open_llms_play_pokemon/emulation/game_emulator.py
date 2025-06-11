@@ -13,7 +13,7 @@ class GameEmulator:
     """Game emulator wrapper for Pokemon Red using PyBoy."""
 
     def __init__(self, headless: bool = False):
-        self.game_dir = os.path.join(os.path.dirname(__file__), "..", "game")
+        self.game_dir = os.path.join(os.path.dirname(__file__), "..", "..", "game")
         self.game_path = os.path.join(self.game_dir, "Pokemon Red.gb")
         self.symbols_path = os.path.join(self.game_dir, "pokered.sym")
         self.headless = headless

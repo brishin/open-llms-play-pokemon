@@ -25,7 +25,7 @@ class GameState(NamedTuple):
 class ReActAgentSignature(dspy.Signature):
     """You are playing Pokemon Red on the Game Boy. Analyze the screenshot and press the appropriate buttons to progress in the game. Remember when moving, the first time you press a direction button, you'll just turn in that direction."""
 
-    screen: dspy.Image = dspy.InputField(type_=dspy.Image)
+    screen: dspy.Image = dspy.InputField()
 
 
 class PokemonRedDSPyAgent(dspy.Module):

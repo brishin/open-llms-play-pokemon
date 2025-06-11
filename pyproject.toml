@@ -9,7 +9,7 @@ dependencies = [
     "openai>=1.82.0",
     "pillow>=11.2.1",
     "pyboy>=2.6.0",
-    "dspy-ai>=2.6.27",
+    "dspy>=3.0.0b1",
 ]
 
 [dependency-groups]
