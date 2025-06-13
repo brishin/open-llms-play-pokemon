@@ -1,5 +1,7 @@
 from enum import IntEnum
 
+# Copied from `game/pokered.sym`.
+
 
 class MemoryAddresses(IntEnum):
     player_name = 0xD158
@@ -46,3 +48,22 @@ class MemoryAddresses(IntEnum):
     opp_mon_4_level = 0xD949
     opp_mon_5_level = 0xD975
     opp_mon_6_level = 0xD9A1
+
+    # Map state variables
+    current_map_width = 0xD369  # wCurMapWidth - Current map width in blocks
+    current_map_height = 0xD368  # wCurMapHeight - Current map height in blocks
+
+    # Tile data buffers
+    overworld_map_buffer = 0xC6E8  # wOverworldMap - Map block buffer (1300 bytes max)
+    surrounding_tiles_buffer = 0xC800  # wSurroundingTiles - 24×20 tile buffer
+    tile_map_buffer = 0xC3A0  # wTileMap - 20×18 screen tile buffer
+    vram_bg_map = 0x9800  # vBGMap0 - VRAM background map
+
+    # Tileset information
+    current_tileset = 0xFFD7  # wCurTileset - Current tileset ID
+    tileset_collision_ptr = 0x1878  # wTilesetCollisionPtr - Pointer to collision data
+    grass_tile_id = 0x1882  # wGrassTile - Grass tile ID for current tileset
+
+    # Map loading and transition state
+    map_loading_status = 0xD36A  # wMapLoadingStatus - Check during transitions
+    sprite_state_data = 0xC100  # wSpriteStateData1 - Base address for sprite data
