@@ -22,7 +22,123 @@ from .data.tile_data_constants import (
     WATER_TILES,
     TilesetID,
 )
-from .tile_data import TileData, classify_tile_type
+from .tile_data import TileData, classify_tile_type, is_tile_walkable
+
+
+def get_tile_id(memory_view: PyBoyMemoryView, x: int, y: int) -> int:
+    """
+    Read tile ID from wTileMap buffer using type-safe memory access.
+
+    Args:
+        memory_view: PyBoy memory view for type-safe memory access
+        x: Screen X coordinate (0-19)
+        y: Screen Y coordinate (0-17)
+
+    Returns:
+        Tile ID at the specified screen position
+    """
+    if not (0 <= x < 20 and 0 <= y < 18):
+        raise ValueError(f"Invalid screen coordinates: ({x}, {y})")
+
+    offset = (y * 20) + x
+    return memory_view[MemoryAddresses.tile_map_buffer + offset]
+
+
+def get_map_coordinates(
+    memory_view: PyBoyMemoryView, screen_x: int, screen_y: int
+) -> tuple[int, int]:
+    """
+    Convert screen coordinates to absolute map coordinates using player position.
+
+    Args:
+        memory_view: PyBoy memory view for accessing player position
+        screen_x: Screen X coordinate (0-19)
+        screen_y: Screen Y coordinate (0-17)
+
+    Returns:
+        Tuple of (map_x, map_y) absolute coordinates
+    """
+    player_x = memory_view[MemoryAddresses.x_coord]
+    player_y = memory_view[MemoryAddresses.y_coord]
+
+    # Convert screen coordinates to map coordinates
+    # Screen center is at (10, 9), so offset from player position
+    map_x = player_x + screen_x - 10
+    map_y = player_y + screen_y - 9
+
+    return map_x, map_y
+
+
+def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
+    """
+    Check if a tile ID is in the collision table using PyBoy memory access.
+
+    Args:
+        memory_view: PyBoy memory view for reading collision data
+        tile_id: Tile ID to check for collision
+
+    Returns:
+        True if tile blocks movement, False if walkable
+    """
+    try:
+        # Read collision table pointer (2 bytes, little endian)
+        collision_ptr_low = memory_view[MemoryAddresses.tileset_collision_ptr]
+        collision_ptr_high = memory_view[MemoryAddresses.tileset_collision_ptr + 1]
+        collision_ptr = collision_ptr_low | (collision_ptr_high << 8)
+
+        # Read collision table until FF termination
+        offset = 0
+        while True:
+            collision_tile = memory_view[collision_ptr + offset]
+            if collision_tile == 0xFF:  # End of table
+                break
+            if collision_tile == tile_id:
+                return True  # Tile is in collision table (blocked)
+            offset += 1
+            if offset > 100:  # Safety limit
+                break
+
+        return False  # Tile not in collision table (walkable)
+    except Exception:
+        # Fallback to tileset-specific collision tables if memory read fails
+        current_tileset = TilesetID(memory_view[MemoryAddresses.current_tileset])
+        return not is_tile_walkable(tile_id, current_tileset)
+
+
+def get_sprite_at_position(
+    memory_view: PyBoyMemoryView, screen_x: int, screen_y: int
+) -> int:
+    """
+    Detect sprite at screen position using PyBoy memory access to sprite data.
+
+    Args:
+        memory_view: PyBoy memory view for accessing sprite data
+        screen_x: Screen X coordinate (0-19)
+        screen_y: Screen Y coordinate (0-17)
+
+    Returns:
+        Sprite offset if sprite found at position, 0 if no sprite
+    """
+    try:
+        # Convert screen coordinates to pixel coordinates
+        pixel_x = screen_x * 8
+        pixel_y = screen_y * 8
+
+        # Check up to 16 sprite slots (standard for Game Boy)
+        for sprite_id in range(16):
+            sprite_base = MemoryAddresses.sprite_state_data + (sprite_id * 16)
+
+            # Read sprite position (SPRITESTATEDATA structure)
+            sprite_x = memory_view[sprite_base + 6]  # SPRITESTATEDATA1_XPIXELS
+            sprite_y = memory_view[sprite_base + 4]  # SPRITESTATEDATA1_YPIXELS
+
+            # Check if sprite is at the target position (8x8 tile)
+            if abs(sprite_x - pixel_x) < 8 and abs(sprite_y - pixel_y) < 8:
+                return sprite_id + 1  # Return non-zero sprite offset
+
+        return 0  # No sprite found
+    except Exception:
+        return 0  # Return 0 if sprite detection fails
 
 
 def create_tile_data(memory_view: PyBoyMemoryView, x: int, y: int) -> TileData:
@@ -38,13 +154,6 @@ def create_tile_data(memory_view: PyBoyMemoryView, x: int, y: int) -> TileData:
         Complete TileData with all properties populated
     """
     # Basic tile reading with type-safe enum addresses
-    from .tile_reader import (
-        get_map_coordinates,
-        get_sprite_at_position,
-        get_tile_id,
-        is_collision_tile,
-    )
-
     tile_id = get_tile_id(memory_view, x, y)
     tileset_id = TilesetID(memory_view[MemoryAddresses.current_tileset])
 

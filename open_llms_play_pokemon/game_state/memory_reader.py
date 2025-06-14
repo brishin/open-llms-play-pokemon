@@ -7,17 +7,20 @@ from .data.memory_addresses import MemoryAddresses
 from .game_state import PokemonRedGameState
 from .screen_analyzer import (
     analyze_screen,
+    categorize_tiles,
     get_comprehensive_game_data,
+    get_encounter_tiles,
+    get_interactive_tiles,
+    get_walkable_tiles,
+    get_warp_tiles,
 )
 from .tile_data import TileMatrix
-from .tile_reader import TileReader
 
 
 class PokemonRedMemoryReader:
     """Utility class to read Pokemon Red game state from memory/symbols"""
 
     def __init__(self, pyboy):
-        self.tile_reader = TileReader(pyboy)
         self.pyboy = pyboy
 
     @staticmethod
@@ -104,7 +107,7 @@ class PokemonRedMemoryReader:
         self, memory_view: PyBoyMemoryView
     ) -> tuple[PokemonRedGameState, TileMatrix | None]:
         """
-        Enhanced version using type-safe PyBoy memory API with enhanced tile system.
+        Parse game state with enhanced tile system using type-safe PyBoy memory API.
 
         Args:
             memory_view: PyBoy memory view for type-safe memory access
@@ -119,12 +122,12 @@ class PokemonRedMemoryReader:
             if loading_status != 0:
                 return self.parse_game_state(self.pyboy), None
         except Exception:
-            # Fall back to basic parsing if enhanced checks fail
+            # Continue with processing if memory check fails
             pass
 
         game_state = self.parse_game_state(self.pyboy)
 
-        # Try enhanced tile system first, fall back to basic if it fails
+        # Use enhanced tile system exclusively
         try:
             enhanced_tiles = analyze_screen(memory_view)
             if enhanced_tiles:
@@ -133,14 +136,9 @@ class PokemonRedMemoryReader:
                 )
                 return game_state, tile_matrix
         except Exception as e:
-            print(f"Enhanced tile system failed, falling back to basic: {e}")
+            print(f"Enhanced tile system failed: {e}")
 
-        # Fallback to existing tile reader
-        try:
-            tile_matrix = self.tile_reader.get_tile_matrix(game_state)
-            return game_state, tile_matrix
-        except Exception:
-            return game_state, None
+        return game_state, None
 
     def get_comprehensive_game_data(self, memory_view: PyBoyMemoryView) -> dict:
         """
@@ -173,27 +171,18 @@ class PokemonRedMemoryReader:
                 "event_flags": game_state.event_flags,
             },
             "tile_data": None,
-            "analysis": None,
             "enhanced_tile_analysis": None,
         }
 
         if tile_matrix is not None:
             data["tile_data"] = tile_matrix.to_dict()
 
-        # Add enhanced tile analysis using same memory_view and type-safe addresses
+        # Add enhanced tile analysis using type-safe memory addresses
         try:
             enhanced_analysis = get_comprehensive_game_data(memory_view)
             data["enhanced_tile_analysis"] = enhanced_analysis
         except Exception as e:
             print(f"Enhanced tile analysis failed: {e}")
-
-        # Add legacy analysis for backward compatibility
-        try:
-            if tile_matrix is not None:
-                analysis = self.tile_reader.analyze_area_around_player(game_state)
-                data["analysis"] = analysis
-        except Exception as e:
-            print(f"Warning: Could not analyze area: {e}")
 
         # Include memory validation metadata
         try:
@@ -309,7 +298,7 @@ class PokemonRedMemoryReader:
 
         game_state = self.parse_game_state(self.pyboy)
 
-        # Try enhanced tile system first
+        # Use enhanced tile system exclusively
         try:
             enhanced_tiles = analyze_screen(memory_view)
             if enhanced_tiles:
@@ -317,12 +306,172 @@ class PokemonRedMemoryReader:
         except Exception as e:
             print(f"Enhanced tile system failed: {e}")
 
-        # Fallback to existing tile reader
+        return None
+
+    def get_walkable_positions(
+        self, memory_view: PyBoyMemoryView
+    ) -> list[tuple[int, int]]:
+        """
+        Get all walkable positions using enhanced tile system.
+
+        Args:
+            memory_view: PyBoy memory view for type-safe memory access
+
+        Returns:
+            List of (x, y) coordinates that are walkable
+        """
         try:
-            return self.tile_reader.get_tile_matrix(game_state)
+            walkable_tiles = get_walkable_tiles(memory_view)
+            return [(tile.x, tile.y) for tile in walkable_tiles]
         except Exception as e:
-            print(f"Warning: Could not read tile matrix: {e}")
-            return None
+            print(f"Failed to get walkable positions: {e}")
+            return []
+
+    def get_encounter_positions(
+        self, memory_view: PyBoyMemoryView
+    ) -> list[tuple[int, int]]:
+        """
+        Get all positions where wild Pokemon encounters can occur.
+
+        Args:
+            memory_view: PyBoy memory view for type-safe memory access
+
+        Returns:
+            List of (x, y) coordinates where encounters are possible
+        """
+        try:
+            encounter_tiles = get_encounter_tiles(memory_view)
+            return [(tile.x, tile.y) for tile in encounter_tiles]
+        except Exception as e:
+            print(f"Failed to get encounter positions: {e}")
+            return []
+
+    def get_interactive_positions(
+        self, memory_view: PyBoyMemoryView
+    ) -> list[tuple[int, int]]:
+        """
+        Get all interactive positions (signs, NPCs, items, etc.).
+
+        Args:
+            memory_view: PyBoy memory view for type-safe memory access
+
+        Returns:
+            List of (x, y) coordinates that are interactive
+        """
+        try:
+            interactive_tiles = get_interactive_tiles(memory_view)
+            return [(tile.x, tile.y) for tile in interactive_tiles]
+        except Exception as e:
+            print(f"Failed to get interactive positions: {e}")
+            return []
+
+    def get_warp_positions(self, memory_view: PyBoyMemoryView) -> list[tuple[int, int]]:
+        """
+        Get all warp/transition positions (doors, stairs, etc.).
+
+        Args:
+            memory_view: PyBoy memory view for type-safe memory access
+
+        Returns:
+            List of (x, y) coordinates that are warps
+        """
+        try:
+            warp_tiles = get_warp_tiles(memory_view)
+            return [(tile.x, tile.y) for tile in warp_tiles]
+        except Exception as e:
+            print(f"Failed to get warp positions: {e}")
+            return []
+
+    def analyze_area_around_player(
+        self, memory_view: PyBoyMemoryView, radius: int = 3
+    ) -> dict:
+        """
+        Analyze the area around the player's current position using enhanced tiles.
+
+        Args:
+            memory_view: PyBoy memory view for type-safe memory access
+            radius: Radius around player to analyze
+
+        Returns:
+            Dictionary with analysis results
+        """
+        try:
+            # Get categorized tiles
+            tile_categories = categorize_tiles(memory_view)
+
+            # Build analysis similar to legacy format for compatibility
+            analysis = {
+                "walkable_nearby": [
+                    (tile.x, tile.y, abs(tile.x - 10) + abs(tile.y - 9))
+                    for tile in tile_categories["walkable"]
+                    if abs(tile.x - 10) + abs(tile.y - 9) <= radius
+                ],
+                "blocked_nearby": [
+                    (tile.x, tile.y, abs(tile.x - 10) + abs(tile.y - 9))
+                    for tile in tile_categories["blocked"]
+                    if abs(tile.x - 10) + abs(tile.y - 9) <= radius
+                ],
+                "encounter_tiles": [
+                    (tile.x, tile.y) for tile in tile_categories["encounters"]
+                ],
+                "warp_tiles": [(tile.x, tile.y) for tile in tile_categories["warps"]],
+                "interactive_tiles": [
+                    (tile.x, tile.y) for tile in tile_categories["interactive"]
+                ],
+                "tile_types": {},
+                "directions_available": {
+                    "north": False,
+                    "south": False,
+                    "east": False,
+                    "west": False,
+                },
+            }
+
+            # Count tile types
+            all_tiles = analyze_screen(memory_view)
+            for tile in all_tiles:
+                if abs(tile.x - 10) + abs(tile.y - 9) <= radius:
+                    tile_type_str = tile.tile_type.value
+                    analysis["tile_types"][tile_type_str] = (
+                        analysis["tile_types"].get(tile_type_str, 0) + 1
+                    )
+
+            # Check immediate directions (1 step away from center)
+            player_center_x, player_center_y = 10, 9
+            directions = [
+                ("north", 0, -1),
+                ("south", 0, 1),
+                ("east", 1, 0),
+                ("west", -1, 0),
+            ]
+
+            for direction, dx, dy in directions:
+                check_x = player_center_x + dx
+                check_y = player_center_y + dy
+                # Find tile at this position
+                tile = next(
+                    (t for t in all_tiles if t.x == check_x and t.y == check_y), None
+                )
+                if tile and tile.is_walkable:
+                    analysis["directions_available"][direction] = True
+
+            return analysis
+        except Exception as e:
+            print(f"Failed to analyze area around player: {e}")
+            return {
+                "walkable_nearby": [],
+                "blocked_nearby": [],
+                "encounter_tiles": [],
+                "warp_tiles": [],
+                "interactive_tiles": [],
+                "tile_types": {},
+                "directions_available": {
+                    "north": False,
+                    "south": False,
+                    "east": False,
+                    "west": False,
+                },
+            }
 
     @staticmethod
     def _read_16bit(memory_view: PyBoyMemoryView, start_addr: int) -> int:

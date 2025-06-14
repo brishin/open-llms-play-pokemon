@@ -154,8 +154,8 @@ def test_comprehensive_game_data_integration():
         pyboy.stop()
 
 
-def test_enhanced_tile_matrix_fallback():
-    """Test that enhanced tile system falls back gracefully to legacy system."""
+def test_enhanced_tile_system_failure_handling():
+    """Test that enhanced tile system handles failures gracefully."""
     # Create mock pyboy and memory reader
     mock_pyboy = Mock()
     mock_memory_view = Mock()
@@ -180,22 +180,18 @@ def test_enhanced_tile_matrix_fallback():
     ) as mock_analyze:
         mock_analyze.side_effect = Exception("Enhanced system failed")
 
-        # Mock the legacy tile reader to succeed
-        mock_tile_matrix = Mock(spec=TileMatrix)
-        memory_reader.tile_reader.get_tile_matrix = Mock(return_value=mock_tile_matrix)
-
         # Mock parse_game_state
         mock_game_state = Mock(spec=PokemonRedGameState)
         memory_reader.parse_game_state = Mock(return_value=mock_game_state)
 
-        # Test fallback behavior
+        # Test failure handling behavior
         game_state, tile_matrix = memory_reader.parse_game_state_with_tiles(
             mock_memory_view
         )
 
-        # Verify fallback worked
+        # Verify system handles failure gracefully
         assert game_state == mock_game_state
-        assert tile_matrix == mock_tile_matrix
+        assert tile_matrix is None  # Should return None when enhanced system fails
         mock_analyze.assert_called_once()
 
 
@@ -373,6 +369,154 @@ def test_comprehensive_data_with_enhanced_analysis():
 
         # Verify the enhanced analysis function was called with memory view
         mock_enhanced.assert_called_once_with(mock_memory_view)
+
+
+def test_enhanced_memory_reader_methods():
+    """Test new enhanced memory reader methods work correctly."""
+    mock_pyboy = Mock()
+    mock_memory_view = Mock()
+    memory_reader = PokemonRedMemoryReader(mock_pyboy)
+
+    # Mock some sample tiles for testing
+    from open_llms_play_pokemon.game_state.data.tile_data_constants import TilesetID
+
+    sample_tiles = [
+        TileData(
+            tile_id=0x52,
+            x=5,
+            y=5,
+            map_x=15,
+            map_y=15,
+            tile_type=TileType.GRASS,
+            tileset_id=TilesetID.OVERWORLD,
+            raw_value=0x52,
+            is_walkable=True,
+            is_ledge_tile=False,
+            ledge_direction=None,
+            movement_modifier=1.0,
+            is_encounter_tile=True,
+            is_warp_tile=False,
+            is_animated=False,
+            light_level=15,
+            has_sign=False,
+            has_bookshelf=False,
+            strength_boulder=False,
+            cuttable_tree=False,
+            pc_accessible=False,
+            trainer_sight_line=False,
+            trainer_id=None,
+            hidden_item_id=None,
+            requires_itemfinder=False,
+            safari_zone_steps=False,
+            game_corner_tile=False,
+            is_fly_destination=False,
+            has_footstep_sound=True,
+            sprite_priority=0,
+            background_priority=0,
+            elevation_pair=None,
+            sprite_offset=0,
+            blocks_light=False,
+            water_current_direction=None,
+            warp_destination_map=None,
+            warp_destination_x=None,
+            warp_destination_y=None,
+        ),
+        TileData(
+            tile_id=0x1B,
+            x=10,
+            y=5,
+            map_x=20,
+            map_y=15,
+            tile_type=TileType.WARP,
+            tileset_id=TilesetID.OVERWORLD,
+            raw_value=0x1B,
+            is_walkable=True,
+            is_ledge_tile=False,
+            ledge_direction=None,
+            movement_modifier=1.0,
+            is_encounter_tile=False,
+            is_warp_tile=True,
+            is_animated=False,
+            light_level=15,
+            has_sign=False,
+            has_bookshelf=False,
+            strength_boulder=False,
+            cuttable_tree=False,
+            pc_accessible=False,
+            trainer_sight_line=False,
+            trainer_id=None,
+            hidden_item_id=None,
+            requires_itemfinder=False,
+            safari_zone_steps=False,
+            game_corner_tile=False,
+            is_fly_destination=False,
+            has_footstep_sound=True,
+            sprite_priority=0,
+            background_priority=0,
+            elevation_pair=None,
+            sprite_offset=0,
+            blocks_light=False,
+            water_current_direction=None,
+            warp_destination_map=None,
+            warp_destination_x=None,
+            warp_destination_y=None,
+        ),
+    ]
+
+    # Test walkable positions
+    with patch(
+        "open_llms_play_pokemon.game_state.memory_reader.get_walkable_tiles"
+    ) as mock_walkable:
+        mock_walkable.return_value = sample_tiles
+        positions = memory_reader.get_walkable_positions(mock_memory_view)
+        assert positions == [(5, 5), (10, 5)]
+        mock_walkable.assert_called_once_with(mock_memory_view)
+
+    # Test encounter positions
+    with patch(
+        "open_llms_play_pokemon.game_state.memory_reader.get_encounter_tiles"
+    ) as mock_encounter:
+        mock_encounter.return_value = [sample_tiles[0]]  # Only grass tile
+        positions = memory_reader.get_encounter_positions(mock_memory_view)
+        assert positions == [(5, 5)]
+        mock_encounter.assert_called_once_with(mock_memory_view)
+
+    # Test warp positions
+    with patch(
+        "open_llms_play_pokemon.game_state.memory_reader.get_warp_tiles"
+    ) as mock_warp:
+        mock_warp.return_value = [sample_tiles[1]]  # Only warp tile
+        positions = memory_reader.get_warp_positions(mock_memory_view)
+        assert positions == [(10, 5)]
+        mock_warp.assert_called_once_with(mock_memory_view)
+
+    # Test area analysis
+    with (
+        patch(
+            "open_llms_play_pokemon.game_state.memory_reader.categorize_tiles"
+        ) as mock_categorize,
+        patch(
+            "open_llms_play_pokemon.game_state.memory_reader.analyze_screen"
+        ) as mock_analyze,
+    ):
+        mock_categorize.return_value = {
+            "walkable": sample_tiles,
+            "blocked": [],
+            "encounters": [sample_tiles[0]],
+            "warps": [sample_tiles[1]],
+            "interactive": [],
+        }
+        mock_analyze.return_value = sample_tiles
+
+        analysis = memory_reader.analyze_area_around_player(mock_memory_view)
+
+        assert "walkable_nearby" in analysis
+        assert "encounter_tiles" in analysis
+        assert "warp_tiles" in analysis
+        assert "directions_available" in analysis
+
+        mock_categorize.assert_called_once_with(mock_memory_view)
+        mock_analyze.assert_called_once_with(mock_memory_view)
 
 
 class MockMemoryView:
