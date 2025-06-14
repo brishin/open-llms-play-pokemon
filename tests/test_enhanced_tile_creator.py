@@ -4,50 +4,64 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 from game_state.data.tile_data_constants import TilesetID
-from game_state.enhanced_tile_creator import (
-    create_tile_data,
-    detect_environmental_properties,
-    detect_interaction_properties,
-    detect_ledge_info,
-)
+from game_state.enhanced_tile_creator import create_tile_data
 from game_state.tile_data import TileType
+from game_state.tile_property_detector import TilePropertyDetector
 
 
 def test_detect_ledge_info():
     """Test ledge detection using pokered ledge data."""
+    from unittest.mock import Mock
+
+    # Create mock memory view
+    memory_view = Mock()
+    detector = TilePropertyDetector(memory_view)
+
     # Test a known ledge tile from LEDGE_DATA (0x37 - down ledge)
-    direction, is_ledge = detect_ledge_info(TilesetID.OVERWORLD, 0x37)
+    direction, is_ledge = detector.detect_ledge_info(TilesetID.OVERWORLD, 0x37)
     assert is_ledge is True
     assert direction == "down"
 
     # Test non-ledge tile
-    direction, is_ledge = detect_ledge_info(TilesetID.OVERWORLD, 0xFF)
+    direction, is_ledge = detector.detect_ledge_info(TilesetID.OVERWORLD, 0xFF)
     assert is_ledge is False
     assert direction is None
 
 
 def test_detect_interaction_properties():
     """Test interaction property detection."""
+    from unittest.mock import Mock
+
+    # Create mock memory view
+    memory_view = Mock()
+    detector = TilePropertyDetector(memory_view)
+
     # Test sign tile
-    interactions = detect_interaction_properties(TilesetID.OVERWORLD, 0x5A)
+    interactions = detector.detect_interaction_properties(TilesetID.OVERWORLD, 0x5A)
     assert interactions["has_sign"] is True
     assert interactions["has_bookshelf"] is False
 
     # Test tree tile
-    interactions = detect_interaction_properties(TilesetID.OVERWORLD, 0x3D)
+    interactions = detector.detect_interaction_properties(TilesetID.OVERWORLD, 0x3D)
     assert interactions["cuttable_tree"] is True
     assert interactions["has_sign"] is False
 
 
 def test_detect_environmental_properties():
     """Test environmental property detection."""
+    from unittest.mock import Mock
+
+    # Create mock memory view
+    memory_view = Mock()
+    detector = TilePropertyDetector(memory_view)
+
     # Test grass tile (encounter)
-    env_props = detect_environmental_properties(TilesetID.OVERWORLD, 0x52)
+    env_props = detector.detect_environmental_properties(TilesetID.OVERWORLD, 0x52)
     assert env_props["is_encounter"] is True
     assert env_props["is_warp"] is False
 
     # Test door tile (warp)
-    env_props = detect_environmental_properties(TilesetID.OVERWORLD, 0x1B)
+    env_props = detector.detect_environmental_properties(TilesetID.OVERWORLD, 0x1B)
     assert env_props["is_warp"] is True
     assert env_props["is_encounter"] is False
 

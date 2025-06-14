@@ -222,49 +222,9 @@ class PokemonRedMemoryReader:
                     row.append(tile)
                 else:
                     # Create placeholder if tile missing
-                    from .data.tile_data_constants import TilesetID
-                    from .tile_data import TileData, TileType
+                    from .tile_data_factory import TileDataFactory
 
-                    placeholder = TileData(
-                        tile_id=0x00,
-                        x=x,
-                        y=y,
-                        map_x=x,
-                        map_y=y,
-                        tile_type=TileType.UNKNOWN,
-                        tileset_id=TilesetID.OVERWORLD,
-                        raw_value=0x00,
-                        is_walkable=False,
-                        is_ledge_tile=False,
-                        ledge_direction=None,
-                        movement_modifier=1.0,
-                        is_encounter_tile=False,
-                        is_warp_tile=False,
-                        is_animated=False,
-                        light_level=15,
-                        has_sign=False,
-                        has_bookshelf=False,
-                        strength_boulder=False,
-                        cuttable_tree=False,
-                        pc_accessible=False,
-                        trainer_sight_line=False,
-                        trainer_id=None,
-                        hidden_item_id=None,
-                        requires_itemfinder=False,
-                        safari_zone_steps=False,
-                        game_corner_tile=False,
-                        is_fly_destination=False,
-                        has_footstep_sound=True,
-                        sprite_priority=0,
-                        background_priority=0,
-                        elevation_pair=None,
-                        sprite_offset=0,
-                        blocks_light=False,
-                        water_current_direction=None,
-                        warp_destination_map=None,
-                        warp_destination_x=None,
-                        warp_destination_y=None,
-                    )
+                    placeholder = TileDataFactory.create_placeholder(x, y)
                     row.append(placeholder)
             tile_matrix.append(row)
 

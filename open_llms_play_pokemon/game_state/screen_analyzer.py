@@ -4,6 +4,8 @@ This module provides functions for analyzing entire screen areas (20x18 tiles) a
 categorizing tiles for AI decision-making.
 """
 
+from collections.abc import Callable
+
 from pyboy import PyBoyMemoryView
 
 from .data.memory_addresses import MemoryAddresses
@@ -45,6 +47,23 @@ def analyze_screen(memory_view: PyBoyMemoryView) -> list[TileData]:
     return tiles
 
 
+def _filter_tiles_by(
+    memory_view: PyBoyMemoryView, filter_func: Callable[[TileData], bool]
+) -> list[TileData]:
+    """
+    Base function to filter tiles by a given condition.
+
+    Args:
+        memory_view: PyBoy memory view for accessing game memory
+        filter_func: Function that takes a TileData and returns bool
+
+    Returns:
+        List of TileData objects that match the filter condition
+    """
+    screen_tiles = analyze_screen(memory_view)
+    return [tile for tile in screen_tiles if filter_func(tile)]
+
+
 def get_walkable_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
     """
     Get all walkable tiles on the current screen.
@@ -55,8 +74,7 @@ def get_walkable_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
     Returns:
         List of walkable TileData objects
     """
-    screen_tiles = analyze_screen(memory_view)
-    return [tile for tile in screen_tiles if tile.is_walkable]
+    return _filter_tiles_by(memory_view, lambda tile: tile.is_walkable)
 
 
 def get_interactive_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
@@ -69,18 +87,16 @@ def get_interactive_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
     Returns:
         List of interactive TileData objects
     """
-    screen_tiles = analyze_screen(memory_view)
-    return [
-        tile
-        for tile in screen_tiles
-        if (
+    return _filter_tiles_by(
+        memory_view,
+        lambda tile: (
             tile.has_sign
             or tile.hidden_item_id is not None
             or tile.has_bookshelf
             or tile.cuttable_tree
             or tile.strength_boulder
-        )
-    ]
+        ),
+    )
 
 
 def get_encounter_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
@@ -93,8 +109,7 @@ def get_encounter_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
     Returns:
         List of encounter TileData objects (grass, water, caves)
     """
-    screen_tiles = analyze_screen(memory_view)
-    return [tile for tile in screen_tiles if tile.is_encounter_tile]
+    return _filter_tiles_by(memory_view, lambda tile: tile.is_encounter_tile)
 
 
 def get_warp_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
@@ -107,8 +122,7 @@ def get_warp_tiles(memory_view: PyBoyMemoryView) -> list[TileData]:
     Returns:
         List of warp TileData objects
     """
-    screen_tiles = analyze_screen(memory_view)
-    return [tile for tile in screen_tiles if tile.is_warp_tile]
+    return _filter_tiles_by(memory_view, lambda tile: tile.is_warp_tile)
 
 
 def categorize_tiles(memory_view: PyBoyMemoryView) -> dict:
