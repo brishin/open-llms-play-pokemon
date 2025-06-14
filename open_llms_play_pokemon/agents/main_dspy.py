@@ -152,63 +152,30 @@ class PokemonRedDSPyPlayer:
             if step_counter % 5 == 0:
                 memory_view = self.emulator.pyboy.memory
 
-                # Get comprehensive game data without internal logging
-                comprehensive_data = self.memory_reader.get_comprehensive_game_data(
+                # Get all data in one optimized call
+                consolidated_state = self.memory_reader.get_consolidated_game_state(
                     memory_view
                 )
 
-                # Get area analysis without internal logging
-                area_analysis = self.memory_reader.analyze_area_around_player(
-                    memory_view, radius=3
-                )
+                # Set runtime fields
+                consolidated_state.step_counter = step_counter
+                consolidated_state.timestamp = datetime.now().isoformat()
 
-                # Create merged dictionary with all data
-                merged_game_data = {
-                    "step_counter": step_counter,
-                    "timestamp": datetime.now().isoformat(),
-                    "area_analysis": area_analysis,
-                    "game_state": {
-                        k: v
-                        for k, v in comprehensive_data.get("game_state", {}).items()
-                        if k != "event_flags"
-                    },
-                    "memory_state": comprehensive_data.get("memory_state", {}),
-                    "tile_analysis": comprehensive_data.get(
-                        "enhanced_tile_analysis", {}
-                    ),
-                    "movement_options": area_analysis.get("directions_available", {}),
-                    "nearby_tiles": {
-                        "walkable": area_analysis.get("walkable_nearby", []),
-                        "encounters": area_analysis.get("encounter_tiles", []),
-                        "warps": area_analysis.get("warp_tiles", []),
-                        "interactive": area_analysis.get("interactive_tiles", []),
-                    },
-                    "tile_counts": area_analysis.get("tile_types", {}),
-                }
+                # Convert to dict (automatically excludes event_flags)
+                game_data = consolidated_state.to_dict()
 
-                # Log single merged dictionary
-                mlflow.log_dict(
-                    merged_game_data, f"game_state_step_{step_counter}.json"
-                )
+                # Log the data
+                mlflow.log_dict(game_data, f"game_state_step_{step_counter}.json")
 
                 # Log key metrics for easier tracking
-                if merged_game_data["game_state"]:
-                    mlflow.log_metrics(
-                        {
-                            "badges": merged_game_data["game_state"].get(
-                                "badges_obtained", 0
-                            ),
-                            "party_count": merged_game_data["game_state"].get(
-                                "party_count", 0
-                            ),
-                            "current_map": merged_game_data["game_state"].get(
-                                "current_map", 0
-                            ),
-                            "is_in_battle": merged_game_data["game_state"].get(
-                                "is_in_battle", False
-                            ),
-                        }
-                    )
+                mlflow.log_metrics(
+                    {
+                        "badges": consolidated_state.badges_obtained,
+                        "party_count": consolidated_state.party_count,
+                        "current_map": consolidated_state.current_map,
+                        "is_in_battle": int(consolidated_state.is_in_battle),
+                    }
+                )
 
         except Exception as e:
             self.logger.warning(
@@ -220,25 +187,20 @@ class PokemonRedDSPyPlayer:
         try:
             self.emulator.load_state("init.state")
 
-            # Get comprehensive game data using enhanced tile system
+            # Get all game data using unified consolidated method
             memory_view = self.emulator.pyboy.memory
-            comprehensive_data = self.memory_reader.get_comprehensive_game_data(
+            consolidated_state = self.memory_reader.get_consolidated_game_state(
                 memory_view
-            )
-
-            # Analyze area around player for additional context
-            area_analysis = self.memory_reader.analyze_area_around_player(
-                memory_view, radius=3
             )
 
             screen_base64 = self.emulator.get_screen_base64()
 
-            # Create game state with comprehensive data
+            # Create game state with consolidated data
             game_state = GameState(
                 screen_base64=screen_base64,
                 context="You are playing Pokemon Red on the Game Boy. Progress through the game by exploring, catching Pokemon, battling trainers, and completing the main storyline.",
-                comprehensive_data=comprehensive_data,
-                game_analysis=area_analysis,
+                comprehensive_data=consolidated_state.to_dict(),
+                game_analysis=None,  # All data is now in comprehensive_data
             )
 
             parsed_action = self.agent.forward(game_state)

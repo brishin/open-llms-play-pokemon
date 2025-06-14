@@ -3,22 +3,20 @@ from collections.abc import Sequence
 from pyboy import PyBoy, PyBoyMemoryView
 from pyboy.plugins.game_wrapper_pokemon_gen1 import GameWrapperPokemonGen1
 
+from .consolidated_state import ConsolidatedGameState
 from .data.memory_addresses import MemoryAddresses
 from .game_state import PokemonRedGameState
 from .screen_analyzer import (
     analyze_screen,
     categorize_tiles,
-    get_comprehensive_game_data,
-    get_encounter_tiles,
-    get_interactive_tiles,
-    get_walkable_tiles,
-    get_warp_tiles,
 )
-from .tile_data import TileMatrix
 
 
 class PokemonRedMemoryReader:
     """Utility class to read Pokemon Red game state from memory/symbols"""
+
+    # Player is always at screen center
+    PLAYER_CENTER_X, PLAYER_CENTER_Y = 10, 9
 
     def __init__(self, pyboy):
         self.pyboy = pyboy
@@ -103,335 +101,154 @@ class PokemonRedMemoryReader:
             event_flags=event_flags,
         )
 
-    def parse_game_state_with_tiles(
-        self, memory_view: PyBoyMemoryView
-    ) -> tuple[PokemonRedGameState, TileMatrix | None]:
+    def _process_tile_data(self, memory_view: PyBoyMemoryView) -> dict:
         """
-        Parse game state with enhanced tile system using type-safe PyBoy memory API.
+        Single method to process all tile data consistently.
 
         Args:
             memory_view: PyBoy memory view for type-safe memory access
 
         Returns:
-            Tuple of (game_state, enhanced_tile_matrix)
-            tile_matrix will be None if map is transitioning/loading
+            Dictionary with all processed tile data
         """
-        # Validate memory state before processing
-        try:
-            loading_status = memory_view[MemoryAddresses.map_loading_status]
-            if loading_status != 0:
-                return self.parse_game_state(self.pyboy), None
-        except Exception:
-            # Continue with processing if memory check fails
-            pass
+        # Get all tiles in one pass
+        tile_categories = categorize_tiles(memory_view)
+        all_tiles = analyze_screen(memory_view)
 
-        game_state = self.parse_game_state(self.pyboy)
-
-        # Use enhanced tile system exclusively
-        try:
-            enhanced_tiles = analyze_screen(memory_view)
-            if enhanced_tiles:
-                tile_matrix = self._create_enhanced_tile_matrix(
-                    enhanced_tiles, game_state
-                )
-                return game_state, tile_matrix
-        except Exception as e:
-            print(f"Enhanced tile system failed: {e}")
-
-        return game_state, None
-
-    def get_comprehensive_game_data(self, memory_view: PyBoyMemoryView) -> dict:
-        """
-        Integrate enhanced screen analysis with type-safe memory access.
-
-        This is the main function for AI agents to get complete environmental data.
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            Comprehensive dictionary with all game state and enhanced tile information
-        """
-        game_state, tile_matrix = self.parse_game_state_with_tiles(memory_view)
-
-        data = {
-            "game_state": {
-                "player_name": game_state.player_name,
-                "current_map": game_state.current_map,
-                "player_x": game_state.player_x,
-                "player_y": game_state.player_y,
-                "party_count": game_state.party_count,
-                "party_pokemon_levels": game_state.party_pokemon_levels,
-                "party_pokemon_hp": game_state.party_pokemon_hp,
-                "badges_obtained": game_state.badges_obtained,
-                "badges_binary": game_state.badges_binary,
-                "is_in_battle": game_state.is_in_battle,
-                "player_mon_hp": game_state.player_mon_hp,
-                "enemy_mon_hp": game_state.enemy_mon_hp,
-                "event_flags": game_state.event_flags,
-            },
-            "tile_data": None,
-            "enhanced_tile_analysis": None,
+        return {
+            "walkable_tiles": self._extract_tile_coordinates_with_distance(
+                tile_categories["walkable"]
+            ),
+            "blocked_tiles": self._extract_tile_coordinates_with_distance(
+                tile_categories["blocked"]
+            ),
+            "encounter_tiles": self._extract_tile_coordinates(
+                tile_categories["encounters"]
+            ),
+            "warp_tiles": self._extract_tile_coordinates(tile_categories["warps"]),
+            "interactive_tiles": self._extract_tile_coordinates(
+                tile_categories["interactive"]
+            ),
+            "tile_type_counts": self._count_tile_types(all_tiles),
+            "directions_available": self._check_immediate_directions(
+                all_tiles, self.PLAYER_CENTER_X, self.PLAYER_CENTER_Y
+            ),
         }
 
-        if tile_matrix is not None:
-            data["tile_data"] = tile_matrix.to_dict()
-
-        # Add enhanced tile analysis using type-safe memory addresses
-        try:
-            enhanced_analysis = get_comprehensive_game_data(memory_view)
-            data["enhanced_tile_analysis"] = enhanced_analysis
-        except Exception as e:
-            print(f"Enhanced tile analysis failed: {e}")
-
-        # Include memory validation metadata
-        try:
-            data["memory_state"] = {
-                "map_loading_status": memory_view[MemoryAddresses.map_loading_status],
-                "current_map": memory_view[MemoryAddresses.current_map],
-                "current_tileset": memory_view[MemoryAddresses.current_tileset],
-                "enhanced_system_available": data["enhanced_tile_analysis"] is not None,
-            }
-        except Exception:
-            data["memory_state"] = {
-                "enhanced_system_available": False,
-                "error": "Memory state validation failed",
-            }
-
-        return data
-
-    def _create_enhanced_tile_matrix(self, enhanced_tiles, game_state) -> TileMatrix:
+    def get_consolidated_game_state(
+        self, memory_view: PyBoyMemoryView
+    ) -> ConsolidatedGameState:
         """
-        Create TileMatrix from enhanced tile data for backward compatibility.
-
-        Args:
-            enhanced_tiles: List of TileData objects from analyze_screen()
-            game_state: PokemonRedGameState for context
-
-        Returns:
-            TileMatrix with enhanced tile data
-        """
-        # Convert list of tiles to 2D matrix (20x18 screen)
-        tile_matrix = []
-        for y in range(18):  # Screen height
-            row = []
-            for x in range(20):  # Screen width
-                # Find tile at this position
-                tile = next((t for t in enhanced_tiles if t.x == x and t.y == y), None)
-                if tile:
-                    row.append(tile)
-                else:
-                    # Create placeholder if tile missing
-                    from .tile_data_factory import TileDataFactory
-
-                    placeholder = TileDataFactory.create_placeholder(x, y)
-                    row.append(placeholder)
-            tile_matrix.append(row)
-
-        return TileMatrix(
-            tiles=tile_matrix,
-            width=20,
-            height=18,
-            current_map=game_state.current_map,
-            player_x=game_state.player_x,
-            player_y=game_state.player_y,
-            timestamp=None,
-        )
-
-    def get_tile_matrix(self, memory_view: PyBoyMemoryView) -> TileMatrix | None:
-        """
-        Get enhanced tile matrix data using type-safe PyBoy memory access.
+        Get all game data in a single, optimized call.
+        Returns all tiles without radius filtering.
 
         Args:
             memory_view: PyBoy memory view for type-safe memory access
 
         Returns:
-            Enhanced TileMatrix or None if not available
+            ConsolidatedGameState with all game data optimized for logging
         """
-        # Validate memory state before processing
-        try:
-            loading_status = memory_view[MemoryAddresses.map_loading_status]
-            if loading_status != 0:
-                return None
-        except Exception:
-            pass
-
+        # Parse base game state (with event_flags)
         game_state = self.parse_game_state(self.pyboy)
 
-        # Use enhanced tile system exclusively
+        # Process all tile data using unified method
+        tile_data = self._process_tile_data(memory_view)
+
+        # Read memory state
         try:
-            enhanced_tiles = analyze_screen(memory_view)
-            if enhanced_tiles:
-                return self._create_enhanced_tile_matrix(enhanced_tiles, game_state)
-        except Exception as e:
-            print(f"Enhanced tile system failed: {e}")
+            map_loading_status = memory_view[MemoryAddresses.map_loading_status]
+            current_tileset = memory_view[MemoryAddresses.current_tileset]
+        except Exception:
+            map_loading_status = 0
+            current_tileset = 0
 
-        return None
-
-    def get_walkable_positions(
-        self, memory_view: PyBoyMemoryView
-    ) -> list[tuple[int, int]]:
-        """
-        Get all walkable positions using enhanced tile system.
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            List of (x, y) coordinates that are walkable
-        """
-        try:
-            walkable_tiles = get_walkable_tiles(memory_view)
-            return [(tile.x, tile.y) for tile in walkable_tiles]
-        except Exception as e:
-            print(f"Failed to get walkable positions: {e}")
-            return []
-
-    def get_encounter_positions(
-        self, memory_view: PyBoyMemoryView
-    ) -> list[tuple[int, int]]:
-        """
-        Get all positions where wild Pokemon encounters can occur.
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            List of (x, y) coordinates where encounters are possible
-        """
-        try:
-            encounter_tiles = get_encounter_tiles(memory_view)
-            return [(tile.x, tile.y) for tile in encounter_tiles]
-        except Exception as e:
-            print(f"Failed to get encounter positions: {e}")
-            return []
-
-    def get_interactive_positions(
-        self, memory_view: PyBoyMemoryView
-    ) -> list[tuple[int, int]]:
-        """
-        Get all interactive positions (signs, NPCs, items, etc.).
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            List of (x, y) coordinates that are interactive
-        """
-        try:
-            interactive_tiles = get_interactive_tiles(memory_view)
-            return [(tile.x, tile.y) for tile in interactive_tiles]
-        except Exception as e:
-            print(f"Failed to get interactive positions: {e}")
-            return []
-
-    def get_warp_positions(self, memory_view: PyBoyMemoryView) -> list[tuple[int, int]]:
-        """
-        Get all warp/transition positions (doors, stairs, etc.).
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            List of (x, y) coordinates that are warps
-        """
-        try:
-            warp_tiles = get_warp_tiles(memory_view)
-            return [(tile.x, tile.y) for tile in warp_tiles]
-        except Exception as e:
-            print(f"Failed to get warp positions: {e}")
-            return []
-
-    def analyze_area_around_player(
-        self, memory_view: PyBoyMemoryView, radius: int = 3
-    ) -> dict:
-        """
-        Analyze the area around the player's current position using enhanced tiles.
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-            radius: Radius around player to analyze
-
-        Returns:
-            Dictionary with analysis results
-        """
-        try:
-            # Get categorized tiles
-            tile_categories = categorize_tiles(memory_view)
-
-            # Build analysis similar to legacy format for compatibility
-            analysis = {
-                "walkable_nearby": [
-                    (tile.x, tile.y, abs(tile.x - 10) + abs(tile.y - 9))
-                    for tile in tile_categories["walkable"]
-                    if abs(tile.x - 10) + abs(tile.y - 9) <= radius
-                ],
-                "blocked_nearby": [
-                    (tile.x, tile.y, abs(tile.x - 10) + abs(tile.y - 9))
-                    for tile in tile_categories["blocked"]
-                    if abs(tile.x - 10) + abs(tile.y - 9) <= radius
-                ],
-                "encounter_tiles": [
-                    (tile.x, tile.y) for tile in tile_categories["encounters"]
-                ],
-                "warp_tiles": [(tile.x, tile.y) for tile in tile_categories["warps"]],
-                "interactive_tiles": [
-                    (tile.x, tile.y) for tile in tile_categories["interactive"]
-                ],
-                "tile_types": {},
-                "directions_available": {
-                    "north": False,
-                    "south": False,
-                    "east": False,
-                    "west": False,
-                },
-            }
-
-            # Count tile types
-            all_tiles = analyze_screen(memory_view)
-            for tile in all_tiles:
-                if abs(tile.x - 10) + abs(tile.y - 9) <= radius:
-                    tile_type_str = tile.tile_type.value
-                    analysis["tile_types"][tile_type_str] = (
-                        analysis["tile_types"].get(tile_type_str, 0) + 1
-                    )
-
-            # Check immediate directions (1 step away from center)
-            player_center_x, player_center_y = 10, 9
-            directions = [
-                ("north", 0, -1),
-                ("south", 0, 1),
-                ("east", 1, 0),
-                ("west", -1, 0),
+        # Only include fields that exist in ConsolidatedGameState
+        game_data = game_state.to_dict()
+        filtered_game_data = {
+            k: v
+            for k, v in game_data.items()
+            if k
+            in [
+                "player_name",
+                "current_map",
+                "player_x",
+                "player_y",
+                "party_count",
+                "party_pokemon_levels",
+                "party_pokemon_hp",
+                "badges_obtained",
+                "is_in_battle",
+                "player_mon_hp",
+                "enemy_mon_hp",
             ]
+        }
 
-            for direction, dx, dy in directions:
-                check_x = player_center_x + dx
-                check_y = player_center_y + dy
-                # Find tile at this position
-                tile = next(
-                    (t for t in all_tiles if t.x == check_x and t.y == check_y), None
-                )
-                if tile and tile.is_walkable:
-                    analysis["directions_available"][direction] = True
+        return ConsolidatedGameState(
+            # Runtime fields (to be set by caller)
+            step_counter=0,
+            timestamp="",
+            # Game state fields (excluding event_flags and badges_binary)
+            **filtered_game_data,
+            # Memory state
+            map_loading_status=map_loading_status,
+            current_tileset=current_tileset,
+            # All tiles data
+            **tile_data,
+        )
 
-            return analysis
-        except Exception as e:
-            print(f"Failed to analyze area around player: {e}")
-            return {
-                "walkable_nearby": [],
-                "blocked_nearby": [],
-                "encounter_tiles": [],
-                "warp_tiles": [],
-                "interactive_tiles": [],
-                "tile_types": {},
-                "directions_available": {
-                    "north": False,
-                    "south": False,
-                    "east": False,
-                    "west": False,
-                },
-            }
+    def _check_immediate_directions(
+        self, all_tiles: list, player_center_x: int, player_center_y: int
+    ) -> dict[str, bool]:
+        """Check walkability of immediate neighboring tiles."""
+        directions = {
+            "north": (0, -1),
+            "south": (0, 1),
+            "east": (1, 0),
+            "west": (-1, 0),
+        }
+
+        directions_available = {}
+        for direction, (dx, dy) in directions.items():
+            check_x = player_center_x + dx
+            check_y = player_center_y + dy
+            # Find tile at this position
+            tile = next(
+                (t for t in all_tiles if t.x == check_x and t.y == check_y), None
+            )
+            directions_available[direction] = bool(tile and tile.is_walkable)
+
+        return directions_available
+
+    @staticmethod
+    def _calculate_distance(tile_x: int, tile_y: int) -> int:
+        """Calculate Manhattan distance from player center."""
+        return abs(tile_x - PokemonRedMemoryReader.PLAYER_CENTER_X) + abs(
+            tile_y - PokemonRedMemoryReader.PLAYER_CENTER_Y
+        )
+
+    @staticmethod
+    def _extract_tile_coordinates(tiles: list) -> list[tuple[int, int]]:
+        """Extract (x, y) coordinates from tiles."""
+        return [(t.x, t.y) for t in tiles]
+
+    @staticmethod
+    def _extract_tile_coordinates_with_distance(
+        tiles: list,
+    ) -> list[tuple[int, int, int]]:
+        """Extract (x, y, distance) coordinates from tiles."""
+        return [
+            (t.x, t.y, PokemonRedMemoryReader._calculate_distance(t.x, t.y))
+            for t in tiles
+        ]
+
+    @staticmethod
+    def _count_tile_types(all_tiles: list) -> dict[str, int]:
+        """Count tiles by type."""
+        tile_type_counts = {}
+        for tile in all_tiles:
+            tile_type_str = tile.tile_type.value
+            tile_type_counts[tile_type_str] = tile_type_counts.get(tile_type_str, 0) + 1
+        return tile_type_counts
 
     @staticmethod
     def _read_16bit(memory_view: PyBoyMemoryView, start_addr: int) -> int:

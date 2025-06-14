@@ -83,7 +83,9 @@ class TilePropertyDetector:
 
     @staticmethod
     def detect_trainer_sight_line(
-        memory_view: PyBoyMemoryView, map_x: int, map_y: int  # noqa: ARG002
+        memory_view: PyBoyMemoryView,
+        map_x: int,
+        map_y: int,  # noqa: ARG002
     ) -> dict:
         """
         Detect if position is in trainer sight line using sprite data analysis.
@@ -130,7 +132,10 @@ class TilePropertyDetector:
 
     @staticmethod
     def detect_special_properties(
-        tileset_id: TilesetID, tile_id: int, map_x: int, map_y: int  # noqa: ARG002
+        tileset_id: TilesetID,
+        tile_id: int,
+        map_x: int,
+        map_y: int,  # noqa: ARG002
     ) -> dict:
         """
         Detect special zone properties and unique tile behaviors.

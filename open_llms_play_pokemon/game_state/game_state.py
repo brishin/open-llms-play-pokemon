@@ -5,7 +5,7 @@ This module defines the data structures for representing Pokemon Red game states
 and evaluation examples.
 """
 
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
@@ -30,6 +30,17 @@ class PokemonRedGameState:
     is_in_battle: bool
     player_mon_hp: tuple | None = None  # (current, max)
     enemy_mon_hp: tuple | None = None  # (current, max)
+
+    def to_dict(self) -> dict[str, Any]:
+        """
+        Convert to dictionary, always excluding event_flags for serialization.
+
+        Returns:
+            Dictionary representation of game state without event_flags
+        """
+        data = asdict(self)
+        data.pop("event_flags", None)  # Remove event_flags if present
+        return data
 
 
 @dataclass

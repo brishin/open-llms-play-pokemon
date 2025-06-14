@@ -1,529 +1,214 @@
-"""Tests for game state and memory reading functionality."""
+"""Tests for game state and memory reading functionality with the new consolidated system."""
 
 import sys
 from pathlib import Path
-from typing import cast
-from unittest.mock import Mock, patch
-
-from pyboy import PyBoy, PyBoyMemoryView
-
-from open_llms_play_pokemon.game_state import (
-    PokemonRedGameState,
-    PokemonRedMemoryReader,
-)
-from open_llms_play_pokemon.game_state.data.memory_addresses import MemoryAddresses
-from open_llms_play_pokemon.game_state.tile_data import TileData, TileMatrix, TileType
+from unittest.mock import Mock
 
 # Add the project root to the Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-
-def test_memory_reader_with_init_state():
-    """Test reading memory from emulator after loading init.state file."""
-    pyboy = PyBoy("game/Pokemon Red.gb", window="null")
-
-    try:
-        with open("game/init.state", "rb") as state_file:
-            pyboy.load_state(state_file)
-        game_state = PokemonRedMemoryReader.parse_game_state(pyboy)
-
-        assert isinstance(game_state, PokemonRedGameState)
-        assert game_state.current_map >= 0
-        assert game_state.player_x >= 0
-        assert game_state.player_y >= 0
-        assert game_state.party_count >= 0
-        assert game_state.badges_obtained >= 0
-        assert isinstance(game_state.event_flags, list)
-        assert isinstance(game_state.is_in_battle, bool)
-
-        print(f"Game state: {game_state}")
-
-    finally:
-        pyboy.stop()
+from open_llms_play_pokemon.game_state import (  # noqa: E402
+    ConsolidatedGameState,
+    PokemonRedGameState,
+    PokemonRedMemoryReader,
+)
+from open_llms_play_pokemon.game_state.data.memory_addresses import (  # noqa: E402
+    MemoryAddresses,
+)
 
 
-def test_memory_reader_16bit_functions():
-    """Test the 16-bit memory reading helper functions."""
-    # Test data: 0x1234 should be stored as 0x34, 0x12 (little endian)
-    test_data = [0x34, 0x12, 0x78, 0x56]
-    memory_view = cast(PyBoyMemoryView, MockMemoryView(test_data))
-
-    # Test single 16-bit read
-    value = PokemonRedMemoryReader._read_16bit(memory_view, 0)
-    assert value == 0x1234
-
-    value = PokemonRedMemoryReader._read_16bit(memory_view, 2)
-    assert value == 0x5678
-
-    # Test multiple 16-bit reads
-    values = PokemonRedMemoryReader._read_multiple_16bit(memory_view, [0, 2])
-    assert values == [0x1234, 0x5678]
-
-
-def test_enhanced_tile_system_integration():
-    """Test full integration of enhanced tile system with memory reader."""
-    pyboy = PyBoy("game/Pokemon Red.gb", window="null")
-
-    try:
-        with open("game/init.state", "rb") as state_file:
-            pyboy.load_state(state_file)
-
-        memory_reader = PokemonRedMemoryReader(pyboy)
-        memory_view = pyboy.memory
-
-        # Test enhanced tile system integration
-        game_state, tile_matrix = memory_reader.parse_game_state_with_tiles(memory_view)
-
-        # Verify game state is valid
-        assert isinstance(game_state, PokemonRedGameState)
-        assert game_state.current_map >= 0
-
-        # Verify tile matrix structure
-        if tile_matrix is not None:
-            assert isinstance(tile_matrix, TileMatrix)
-            assert tile_matrix.width == 20
-            assert tile_matrix.height == 18
-            assert len(tile_matrix.tiles) == 18
-            assert len(tile_matrix.tiles[0]) == 20
-
-            # Check that tiles have enhanced properties
-            sample_tile = tile_matrix.tiles[5][10]  # Middle of screen
-            assert isinstance(sample_tile, TileData)
-            assert hasattr(sample_tile, "is_walkable")
-            assert hasattr(sample_tile, "is_encounter_tile")
-            assert hasattr(sample_tile, "tile_type")
-            assert hasattr(sample_tile, "tileset_id")
-
-    finally:
-        pyboy.stop()
-
-
-def test_comprehensive_game_data_integration():
-    """Test comprehensive game data collection with enhanced tile analysis."""
-    pyboy = PyBoy("game/Pokemon Red.gb", window="null")
-
-    try:
-        with open("game/init.state", "rb") as state_file:
-            pyboy.load_state(state_file)
-
-        memory_reader = PokemonRedMemoryReader(pyboy)
-        memory_view = pyboy.memory
-
-        # Get comprehensive game data
-        comprehensive_data = memory_reader.get_comprehensive_game_data(memory_view)
-
-        # Verify structure
-        assert "game_state" in comprehensive_data
-        assert "tile_data" in comprehensive_data
-        assert "enhanced_tile_analysis" in comprehensive_data
-        assert "memory_state" in comprehensive_data
-
-        # Check game state section
-        game_state_data = comprehensive_data["game_state"]
-        assert "current_map" in game_state_data
-        assert "player_x" in game_state_data
-        assert "player_y" in game_state_data
-        assert "party_count" in game_state_data
-
-        # Check memory state validation
-        memory_state = comprehensive_data["memory_state"]
-        assert "enhanced_system_available" in memory_state
-        assert isinstance(memory_state["enhanced_system_available"], bool)
-
-        # If enhanced tile analysis is available, verify structure
-        enhanced_analysis = comprehensive_data["enhanced_tile_analysis"]
-        if enhanced_analysis is not None:
-            assert "walkable" in enhanced_analysis
-            assert "blocked" in enhanced_analysis
-            assert "player_context" in enhanced_analysis
-            assert "map_context" in enhanced_analysis
-
-            # Check player context
-            player_context = enhanced_analysis["player_context"]
-            assert "position" in player_context
-            assert "screen_center" in player_context
-            assert player_context["screen_center"] == (10, 9)
-
-            # Check map context
-            map_context = enhanced_analysis["map_context"]
-            assert "screen_dimensions" in map_context
-            assert map_context["screen_dimensions"] == (20, 18)
-
-    finally:
-        pyboy.stop()
-
-
-def test_enhanced_tile_system_failure_handling():
-    """Test that enhanced tile system handles failures gracefully."""
-    # Create mock pyboy and memory reader
-    mock_pyboy = Mock()
-    mock_memory_view = Mock()
-
-    # Mock memory addresses for stable map state
-    def mock_getitem(addr):
-        return {
-            MemoryAddresses.map_loading_status: 0,
-            MemoryAddresses.current_map: 1,
-            MemoryAddresses.current_tileset: 0,
-            MemoryAddresses.x_coord: 10,
-            MemoryAddresses.y_coord: 10,
-        }.get(addr, 0)
-
-    mock_memory_view.__getitem__ = Mock(side_effect=mock_getitem)
-
-    memory_reader = PokemonRedMemoryReader(mock_pyboy)
-
-    # Mock the enhanced tile system to fail
-    with patch(
-        "open_llms_play_pokemon.game_state.memory_reader.analyze_screen"
-    ) as mock_analyze:
-        mock_analyze.side_effect = Exception("Enhanced system failed")
-
-        # Mock parse_game_state
-        mock_game_state = Mock(spec=PokemonRedGameState)
-        memory_reader.parse_game_state = Mock(return_value=mock_game_state)
-
-        # Test failure handling behavior
-        game_state, tile_matrix = memory_reader.parse_game_state_with_tiles(
-            mock_memory_view
-        )
-
-        # Verify system handles failure gracefully
-        assert game_state == mock_game_state
-        assert tile_matrix is None  # Should return None when enhanced system fails
-        mock_analyze.assert_called_once()
-
-
-def test_enhanced_tile_matrix_creation():
-    """Test creation of enhanced tile matrix from tile data."""
-    # Create mock enhanced tiles
-    from open_llms_play_pokemon.game_state.data.tile_data_constants import TilesetID
-
-    enhanced_tiles = []
-    for y in range(3):  # Small test area
-        for x in range(3):
-            tile = TileData(
-                tile_id=0x52,
-                x=x,
-                y=y,
-                map_x=x + 10,
-                map_y=y + 10,
-                tile_type=TileType.GRASS,
-                tileset_id=TilesetID.OVERWORLD,
-                raw_value=0x52,
-                is_walkable=True,
-                is_ledge_tile=False,
-                ledge_direction=None,
-                movement_modifier=1.0,
-                is_encounter_tile=True,
-                is_warp_tile=False,
-                is_animated=False,
-                light_level=15,
-                has_sign=False,
-                has_bookshelf=False,
-                strength_boulder=False,
-                cuttable_tree=False,
-                pc_accessible=False,
-                trainer_sight_line=False,
-                trainer_id=None,
-                hidden_item_id=None,
-                requires_itemfinder=False,
-                safari_zone_steps=False,
-                game_corner_tile=False,
-                is_fly_destination=False,
-                has_footstep_sound=True,
-                sprite_priority=0,
-                background_priority=0,
-                elevation_pair=None,
-                sprite_offset=0,
-                blocks_light=False,
-                water_current_direction=None,
-                warp_destination_map=None,
-                warp_destination_x=None,
-                warp_destination_y=None,
-            )
-            enhanced_tiles.append(tile)
-
-    # Create mock game state
-    mock_game_state = Mock()
-    mock_game_state.current_map = 1
-    mock_game_state.player_x = 10
-    mock_game_state.player_y = 10
-
-    # Create memory reader and test tile matrix creation
-    mock_pyboy = Mock()
-    memory_reader = PokemonRedMemoryReader(mock_pyboy)
-    tile_matrix = memory_reader._create_enhanced_tile_matrix(
-        enhanced_tiles, mock_game_state
+def test_game_state_to_dict_excludes_event_flags():
+    """Test that PokemonRedGameState.to_dict() excludes event_flags."""
+    game_state = PokemonRedGameState(
+        player_name="ASH",
+        current_map=1,
+        player_x=5,
+        player_y=5,
+        party_count=2,
+        party_pokemon_levels=[25, 20],
+        party_pokemon_hp=[(50, 80), (40, 60)],
+        badges_obtained=3,
+        badges_binary=0b00000111,
+        event_flags=[0, 1, 1, 0, 1, 0],
+        is_in_battle=False,
+        player_mon_hp=(50, 80),
+        enemy_mon_hp=None,
     )
 
-    # Verify matrix structure
-    assert isinstance(tile_matrix, TileMatrix)
-    assert tile_matrix.width == 20
-    assert tile_matrix.height == 18
-    assert tile_matrix.current_map == 1
-    assert tile_matrix.player_x == 10
-    assert tile_matrix.player_y == 10
+    result = game_state.to_dict()
 
-    # Check that enhanced tiles are in correct positions
-    for y in range(3):
-        for x in range(3):
-            tile = tile_matrix.get_tile(x, y)
-            assert tile is not None
-            assert tile.x == x
-            assert tile.y == y
-            assert tile.tile_type == TileType.GRASS
-            assert tile.is_encounter_tile is True
+    # Verify event_flags are excluded
+    assert "event_flags" not in result
 
-    # Check that missing positions have placeholders
-    placeholder = tile_matrix.get_tile(5, 5)
-    assert placeholder is not None
-    assert placeholder.tile_type == TileType.UNKNOWN
-    assert placeholder.is_walkable is False
+    # Verify other fields are present
+    assert result["player_name"] == "ASH"
+    assert result["current_map"] == 1
+    assert result["party_count"] == 2
+    assert result["badges_obtained"] == 3
 
 
-def test_memory_state_validation():
-    """Test memory state validation in enhanced tile system."""
-    mock_pyboy = Mock()
-    mock_memory_view = Mock()
-    memory_reader = PokemonRedMemoryReader(mock_pyboy)
-
-    # Test with loading map state (should return None)
-    def mock_getitem(addr):
-        return {
-            MemoryAddresses.map_loading_status: 1,  # Map is loading
-        }.get(addr, 0)
-
-    mock_memory_view.__getitem__ = Mock(side_effect=mock_getitem)
-
-    mock_game_state = Mock(spec=PokemonRedGameState)
-    memory_reader.parse_game_state = Mock(return_value=mock_game_state)
-
-    game_state, tile_matrix = memory_reader.parse_game_state_with_tiles(
-        mock_memory_view
+def test_consolidated_game_state_structure():
+    """Test ConsolidatedGameState structure and serialization."""
+    state = ConsolidatedGameState(
+        step_counter=10,
+        timestamp="2023-01-01T12:00:00",
+        player_name="TEST",
+        current_map=5,
+        player_x=10,
+        player_y=8,
+        party_count=1,
+        party_pokemon_levels=[15],
+        party_pokemon_hp=[(60, 80)],
+        badges_obtained=2,
+        is_in_battle=False,
+        player_mon_hp=None,
+        enemy_mon_hp=None,
+        map_loading_status=0,
+        current_tileset=2,
+        walkable_tiles=[(5, 5, 2), (6, 6, 3), (7, 7, 4)],
+        blocked_tiles=[(0, 0, 15), (1, 1, 14)],
+        encounter_tiles=[(8, 8), (9, 9)],
+        warp_tiles=[(10, 10)],
+        interactive_tiles=[(11, 11)],
+        tile_type_counts={"walkable": 3, "blocked": 2, "grass": 2},
+        directions_available={
+            "north": True,
+            "south": False,
+            "east": True,
+            "west": True,
+        },
     )
 
-    # Should return game state but no tile matrix when map is loading
-    assert game_state == mock_game_state
-    assert tile_matrix is None
+    # Test serialization
+    data = state.to_dict()
+
+    # Verify core structure
+    assert data["step_counter"] == 10
+    assert data["player_name"] == "TEST"
+    assert data["current_map"] == 5
+    assert len(data["walkable_tiles"]) == 3
+    assert len(data["blocked_tiles"]) == 2
+    assert data["tile_type_counts"]["walkable"] == 3
+
+    # Verify directions
+    directions = data["directions_available"]
+    assert directions["north"] is True
+    assert directions["south"] is False
+    assert directions["east"] is True
+    assert directions["west"] is True
 
 
-def test_comprehensive_data_with_enhanced_analysis():
-    """Test comprehensive data includes enhanced analysis when available."""
+def test_memory_reader_consolidated_method():
+    """Test PokemonRedMemoryReader.get_consolidated_game_state() with mocks."""
+    # Create mock PyBoy and memory view
     mock_pyboy = Mock()
     mock_memory_view = Mock()
-    memory_reader = PokemonRedMemoryReader(mock_pyboy)
 
-    # Mock memory addresses
-    def mock_getitem(addr):
-        return {
-            MemoryAddresses.map_loading_status: 0,
-            MemoryAddresses.current_map: 1,
-            MemoryAddresses.current_tileset: 0,
-        }.get(addr, 0)
-
-    mock_memory_view.__getitem__ = Mock(side_effect=mock_getitem)
-
-    # Mock enhanced analysis
-    mock_enhanced_data = {
-        "walkable": [],
-        "blocked": [],
-        "player_context": {"position": (10, 10), "screen_center": (10, 9)},
-        "map_context": {"screen_dimensions": (20, 18)},
+    # Setup memory mock data
+    test_memory_data = {
+        MemoryAddresses.party_count: 2,
+        MemoryAddresses.obtained_badges: 0b00000011,  # 2 badges
+        MemoryAddresses.is_in_battle: 0,
+        MemoryAddresses.current_map: 3,
+        MemoryAddresses.x_coord: 12,
+        MemoryAddresses.y_coord: 8,
+        MemoryAddresses.player_name: "PLAYER",
+        MemoryAddresses.map_loading_status: 0,
+        MemoryAddresses.current_tileset: 1,
+        MemoryAddresses.event_flags_start: 0,
     }
 
-    with patch(
-        "open_llms_play_pokemon.game_state.memory_reader.get_comprehensive_game_data"
-    ) as mock_enhanced:
-        mock_enhanced.return_value = mock_enhanced_data
+    def mock_getitem(addr):
+        if isinstance(addr, slice):
+            if addr.start == MemoryAddresses.event_flags_start:
+                return [0] * 320  # Event flags array
+            elif addr.stop - addr.start == 2:
+                return [75, 0]  # HP values
+        try:
+            return test_memory_data.get(addr, 0)  # type: ignore[arg-type]
+        except (TypeError, KeyError):
+            return 0
 
-        # Mock game state parsing with all required attributes
-        mock_game_state = Mock(spec=PokemonRedGameState)
-        mock_game_state.player_name = "RED"
-        mock_game_state.current_map = 1
-        mock_game_state.player_x = 10
-        mock_game_state.player_y = 10
-        mock_game_state.party_count = 1
-        mock_game_state.party_pokemon_levels = [5]
-        mock_game_state.party_pokemon_hp = [(15, 20)]
-        mock_game_state.badges_obtained = 0
-        mock_game_state.badges_binary = 0
-        mock_game_state.is_in_battle = False
-        mock_game_state.player_mon_hp = None
-        mock_game_state.enemy_mon_hp = None
-        mock_game_state.event_flags = []
+    mock_memory_view.__getitem__ = Mock(side_effect=mock_getitem)
 
-        memory_reader.parse_game_state = Mock(return_value=mock_game_state)
+    # Set up PyBoy's memory to use our mock
+    mock_pyboy.memory = mock_memory_view
 
-        # Mock tile matrix creation to return None (no tiles)
-        memory_reader.parse_game_state_with_tiles = Mock(
-            return_value=(mock_game_state, None)
-        )
+    # Create memory reader
+    reader = PokemonRedMemoryReader(mock_pyboy)
 
-        comprehensive_data = memory_reader.get_comprehensive_game_data(mock_memory_view)
+    # Test the consolidated method
+    consolidated = reader.get_consolidated_game_state(mock_memory_view)
 
-        # Verify enhanced analysis is included
-        assert comprehensive_data["enhanced_tile_analysis"] == mock_enhanced_data
-        assert comprehensive_data["memory_state"]["enhanced_system_available"] is True
+    # Verify the result
+    assert isinstance(consolidated, ConsolidatedGameState)
+    assert consolidated.player_name == "PLAYER"
+    assert consolidated.current_map == 3
+    assert consolidated.player_x == 12
+    assert consolidated.player_y == 8
+    assert consolidated.party_count == 2
+    assert consolidated.badges_obtained == 2
 
-        # Verify the enhanced analysis function was called with memory view
-        mock_enhanced.assert_called_once_with(mock_memory_view)
+    # Verify tile data structure
+    assert isinstance(consolidated.walkable_tiles, list)
+    assert isinstance(consolidated.blocked_tiles, list)
+    assert isinstance(consolidated.tile_type_counts, dict)
+    assert isinstance(consolidated.directions_available, dict)
+
+    # Verify directions have the expected keys
+    directions = consolidated.directions_available
+    assert "north" in directions
+    assert "south" in directions
+    assert "east" in directions
+    assert "west" in directions
 
 
-def test_enhanced_memory_reader_methods():
-    """Test new enhanced memory reader methods work correctly."""
-    mock_pyboy = Mock()
-    mock_memory_view = Mock()
-    memory_reader = PokemonRedMemoryReader(mock_pyboy)
+def test_memory_reader_utility_methods():
+    """Test the utility methods in PokemonRedMemoryReader."""
+    reader = PokemonRedMemoryReader(Mock())
 
-    # Mock some sample tiles for testing
-    from open_llms_play_pokemon.game_state.data.tile_data_constants import TilesetID
+    # Test distance calculation
+    distance = reader._calculate_distance(15, 12)
+    expected = abs(15 - 10) + abs(12 - 9)  # Manhattan distance from center (10, 9)
+    assert distance == expected
 
-    sample_tiles = [
-        TileData(
-            tile_id=0x52,
-            x=5,
-            y=5,
-            map_x=15,
-            map_y=15,
-            tile_type=TileType.GRASS,
-            tileset_id=TilesetID.OVERWORLD,
-            raw_value=0x52,
-            is_walkable=True,
-            is_ledge_tile=False,
-            ledge_direction=None,
-            movement_modifier=1.0,
-            is_encounter_tile=True,
-            is_warp_tile=False,
-            is_animated=False,
-            light_level=15,
-            has_sign=False,
-            has_bookshelf=False,
-            strength_boulder=False,
-            cuttable_tree=False,
-            pc_accessible=False,
-            trainer_sight_line=False,
-            trainer_id=None,
-            hidden_item_id=None,
-            requires_itemfinder=False,
-            safari_zone_steps=False,
-            game_corner_tile=False,
-            is_fly_destination=False,
-            has_footstep_sound=True,
-            sprite_priority=0,
-            background_priority=0,
-            elevation_pair=None,
-            sprite_offset=0,
-            blocks_light=False,
-            water_current_direction=None,
-            warp_destination_map=None,
-            warp_destination_x=None,
-            warp_destination_y=None,
-        ),
-        TileData(
-            tile_id=0x1B,
-            x=10,
-            y=5,
-            map_x=20,
-            map_y=15,
-            tile_type=TileType.WARP,
-            tileset_id=TilesetID.OVERWORLD,
-            raw_value=0x1B,
-            is_walkable=True,
-            is_ledge_tile=False,
-            ledge_direction=None,
-            movement_modifier=1.0,
-            is_encounter_tile=False,
-            is_warp_tile=True,
-            is_animated=False,
-            light_level=15,
-            has_sign=False,
-            has_bookshelf=False,
-            strength_boulder=False,
-            cuttable_tree=False,
-            pc_accessible=False,
-            trainer_sight_line=False,
-            trainer_id=None,
-            hidden_item_id=None,
-            requires_itemfinder=False,
-            safari_zone_steps=False,
-            game_corner_tile=False,
-            is_fly_destination=False,
-            has_footstep_sound=True,
-            sprite_priority=0,
-            background_priority=0,
-            elevation_pair=None,
-            sprite_offset=0,
-            blocks_light=False,
-            water_current_direction=None,
-            warp_destination_map=None,
-            warp_destination_x=None,
-            warp_destination_y=None,
-        ),
+    # Test coordinate extraction
+    mock_tiles = [
+        Mock(x=5, y=6),
+        Mock(x=7, y=8),
+        Mock(x=9, y=10),
     ]
 
-    # Test walkable positions
-    with patch(
-        "open_llms_play_pokemon.game_state.memory_reader.get_walkable_tiles"
-    ) as mock_walkable:
-        mock_walkable.return_value = sample_tiles
-        positions = memory_reader.get_walkable_positions(mock_memory_view)
-        assert positions == [(5, 5), (10, 5)]
-        mock_walkable.assert_called_once_with(mock_memory_view)
+    coords = reader._extract_tile_coordinates(mock_tiles)
+    assert coords == [(5, 6), (7, 8), (9, 10)]
 
-    # Test encounter positions
-    with patch(
-        "open_llms_play_pokemon.game_state.memory_reader.get_encounter_tiles"
-    ) as mock_encounter:
-        mock_encounter.return_value = [sample_tiles[0]]  # Only grass tile
-        positions = memory_reader.get_encounter_positions(mock_memory_view)
-        assert positions == [(5, 5)]
-        mock_encounter.assert_called_once_with(mock_memory_view)
+    # Test coordinate extraction with distance
+    coords_with_distance = reader._extract_tile_coordinates_with_distance(mock_tiles)
+    assert len(coords_with_distance) == 3
+    assert len(coords_with_distance[0]) == 3  # x, y, distance
+    assert coords_with_distance[0][0] == 5  # x
+    assert coords_with_distance[0][1] == 6  # y
+    assert isinstance(coords_with_distance[0][2], int)  # distance
 
-    # Test warp positions
-    with patch(
-        "open_llms_play_pokemon.game_state.memory_reader.get_warp_tiles"
-    ) as mock_warp:
-        mock_warp.return_value = [sample_tiles[1]]  # Only warp tile
-        positions = memory_reader.get_warp_positions(mock_memory_view)
-        assert positions == [(10, 5)]
-        mock_warp.assert_called_once_with(mock_memory_view)
+    # Test tile type counting
+    mock_tiles_for_count = [
+        Mock(tile_type=Mock(value="walkable")),
+        Mock(tile_type=Mock(value="walkable")),
+        Mock(tile_type=Mock(value="blocked")),
+        Mock(tile_type=Mock(value="grass")),
+        Mock(tile_type=Mock(value="walkable")),
+    ]
 
-    # Test area analysis
-    with (
-        patch(
-            "open_llms_play_pokemon.game_state.memory_reader.categorize_tiles"
-        ) as mock_categorize,
-        patch(
-            "open_llms_play_pokemon.game_state.memory_reader.analyze_screen"
-        ) as mock_analyze,
-    ):
-        mock_categorize.return_value = {
-            "walkable": sample_tiles,
-            "blocked": [],
-            "encounters": [sample_tiles[0]],
-            "warps": [sample_tiles[1]],
-            "interactive": [],
-        }
-        mock_analyze.return_value = sample_tiles
-
-        analysis = memory_reader.analyze_area_around_player(mock_memory_view)
-
-        assert "walkable_nearby" in analysis
-        assert "encounter_tiles" in analysis
-        assert "warp_tiles" in analysis
-        assert "directions_available" in analysis
-
-        mock_categorize.assert_called_once_with(mock_memory_view)
-        mock_analyze.assert_called_once_with(mock_memory_view)
+    counts = reader._count_tile_types(mock_tiles_for_count)
+    assert counts["walkable"] == 3
+    assert counts["blocked"] == 1
+    assert counts["grass"] == 1
 
 
-class MockMemoryView:
-    def __init__(self, data):
-        self.data = data
-
-    def __getitem__(self, key):
-        if isinstance(key, slice):
-            return self.data[key]
-        return self.data[key]
+if __name__ == "__main__":
+    test_game_state_to_dict_excludes_event_flags()
+    test_consolidated_game_state_structure()
+    test_memory_reader_consolidated_method()
+    test_memory_reader_utility_methods()
+    print("✅ All new consolidated system tests passed!")
