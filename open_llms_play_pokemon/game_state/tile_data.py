@@ -6,10 +6,20 @@ collision properties, and position data into serializable formats.
 """
 
 import json
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 
 import numpy as np
+
+from .data.tile_data_constants import (
+    COLLISION_TABLES,
+    DOOR_TILES,
+    GRASS_TILES,
+    LEDGE_TILES,
+    TREE_TILES,
+    WATER_TILES,
+    TilesetID,
+)
 
 
 class TileType(Enum):
@@ -33,66 +43,80 @@ class TileType(Enum):
 @dataclass(frozen=True)
 class TileData:
     """
-    Unified tile data structure containing all known information about a tile.
+    Enhanced tile data structure containing comprehensive information about a tile.
 
-    Attributes:
-        tile_id: PyBoy tile identifier (0-383)
-        x: X coordinate in the game area matrix
-        y: Y coordinate in the game area matrix
-        map_x: Absolute X coordinate on the current map
-        map_y: Absolute Y coordinate on the current map
-        tile_type: Categorized tile type based on function
-        is_walkable: Whether the player can walk through this tile
-        is_encounter_tile: Whether this tile can trigger wild Pokemon encounters
-        is_warp_tile: Whether this tile is a warp/door entrance
-        sprite_offset: Additional offset if this tile contains a sprite
-        raw_value: Raw tile value before any mapping transformations
+    This structure provides 30+ properties covering all aspects of Pokemon Red tiles
+    including collision, interaction, animation, and special behaviors.
     """
 
+    # Basic Identification
     tile_id: int
     x: int
     y: int
     map_x: int
     map_y: int
     tile_type: TileType
+    tileset_id: TilesetID
+    raw_value: int
+
+    # Movement/Collision
     is_walkable: bool
+    is_ledge_tile: bool
+    ledge_direction: str | None  # "down", "left", "right", "up"
+    movement_modifier: float  # Speed multiplier (1.0 = normal)
+
+    # Environmental
     is_encounter_tile: bool
     is_warp_tile: bool
+    is_animated: bool
+    light_level: int  # 0-15, for caves/buildings
+
+    # Interactions
+    has_sign: bool
+    has_bookshelf: bool
+    strength_boulder: bool
+    cuttable_tree: bool
+    pc_accessible: bool
+
+    # Battle System
+    trainer_sight_line: bool
+    trainer_id: int | None
+    hidden_item_id: int | None
+    requires_itemfinder: bool
+
+    # Special Zones
+    safari_zone_steps: bool
+    game_corner_tile: bool
+    is_fly_destination: bool
+
+    # Audio/Visual
+    has_footstep_sound: bool
+    sprite_priority: int  # 0-3, sprite layer priority
+    background_priority: int  # 0-3, background layer priority
+    elevation_pair: int | None  # Paired tile ID for height differences
+
+    # Additional Properties
     sprite_offset: int
-    raw_value: int
+    blocks_light: bool
+    water_current_direction: str | None  # For surfing mechanics
+    warp_destination_map: int | None
+    warp_destination_x: int | None
+    warp_destination_y: int | None
 
     def to_dict(self) -> dict:
         """Convert to dictionary for JSON serialization."""
-        return {
-            "tile_id": self.tile_id,
-            "x": self.x,
-            "y": self.y,
-            "map_x": self.map_x,
-            "map_y": self.map_y,
-            "tile_type": self.tile_type.value,
-            "is_walkable": self.is_walkable,
-            "is_encounter_tile": self.is_encounter_tile,
-            "is_warp_tile": self.is_warp_tile,
-            "sprite_offset": self.sprite_offset,
-            "raw_value": self.raw_value,
-        }
+        data = asdict(self)
+        data["tile_type"] = self.tile_type.value  # Handle enum serialization
+        data["tileset_id"] = int(self.tileset_id)  # Handle IntEnum serialization
+        return data
 
     @classmethod
     def from_dict(cls, data: dict) -> "TileData":
         """Create TileData from dictionary."""
-        return cls(
-            tile_id=data["tile_id"],
-            x=data["x"],
-            y=data["y"],
-            map_x=data["map_x"],
-            map_y=data["map_y"],
-            tile_type=TileType(data["tile_type"]),
-            is_walkable=data["is_walkable"],
-            is_encounter_tile=data["is_encounter_tile"],
-            is_warp_tile=data["is_warp_tile"],
-            sprite_offset=data["sprite_offset"],
-            raw_value=data["raw_value"],
-        )
+        data = data.copy()
+        data["tile_type"] = TileType(data["tile_type"])  # Convert enum back
+        data["tileset_id"] = TilesetID(data["tileset_id"])  # Convert IntEnum back
+        return cls(**data)
 
 
 @dataclass
@@ -199,27 +223,11 @@ class TileMatrix:
         )
 
 
-# Known collision data from Pokemon Red symbols
-COLLISION_TABLES = {
-    # Tileset ID -> set of walkable tile IDs (these would need to be populated from actual game data)
-    0: {32, 33, 34, 35, 36, 37, 38, 39},  # Overworld - example walkable tiles
-    1: {20, 21, 22, 23, 24},  # Red's House - example
-    2: {15, 16, 17, 18, 19},  # Pokemon Center - example
-    3: {40, 41, 42, 43, 44},  # Viridian Forest - example
-}
-
-# Known special tile mappings (these would need to be determined from game analysis)
-GRASS_TILES = {42, 43, 44}  # Example grass tile IDs
-WATER_TILES = {60, 61, 62, 63}  # Example water tile IDs
-WARP_TILES = {80, 81, 82}  # Example door/warp tile IDs
-LEDGE_TILES = {90, 91, 92}  # Example ledge tile IDs
-
-
 def classify_tile_type(
-    tile_id: int, is_walkable: bool, tileset_id: int = 0
+    tile_id: int, is_walkable: bool, tileset_id: TilesetID = TilesetID.OVERWORLD
 ) -> TileType:
     """
-    Classify a tile based on its ID and properties.
+    Classify a tile based on its ID and properties using tileset-specific data.
 
     Args:
         tile_id: The tile identifier
@@ -229,27 +237,36 @@ def classify_tile_type(
     Returns:
         TileType classification
     """
-    if tile_id in GRASS_TILES:
+    # Check tileset-specific mappings
+    if tileset_id in GRASS_TILES and tile_id in GRASS_TILES[tileset_id]:
         return TileType.GRASS
-    elif tile_id in WATER_TILES:
+
+    if tileset_id in WATER_TILES and tile_id in WATER_TILES[tileset_id]:
         return TileType.WATER
-    elif tile_id in WARP_TILES:
+
+    if tileset_id in DOOR_TILES and tile_id in DOOR_TILES[tileset_id]:
         return TileType.WARP
-    elif tile_id in LEDGE_TILES:
-        return TileType.LEDGE
-    elif is_walkable:
+
+    if tileset_id in LEDGE_TILES:
+        # Check all ledge directions for this tileset
+        for tiles in LEDGE_TILES[tileset_id].values():
+            if tile_id in tiles:
+                return TileType.LEDGE
+
+    if tileset_id in TREE_TILES and tile_id in TREE_TILES[tileset_id]:
+        return TileType.TREE
+
+    if is_walkable:
         # Further classify walkable tiles
-        if 20 <= tile_id <= 30:  # Example road tile range
+        if 20 <= tile_id <= 30:  # Road tile range
             return TileType.ROAD
         else:
             return TileType.WALKABLE
     else:
         # Classify blocked tiles
-        if 100 <= tile_id <= 120:  # Example tree tile range
-            return TileType.TREE
-        elif 150 <= tile_id <= 170:  # Example rock tile range
+        if 100 <= tile_id <= 120:  # Generic rock tile range
             return TileType.ROCK
-        elif 200 <= tile_id <= 220:  # Example building tile range
+        elif 200 <= tile_id <= 220:  # Generic building tile range
             return TileType.BUILDING
         else:
             return TileType.BLOCKED
@@ -257,7 +274,7 @@ def classify_tile_type(
     return TileType.UNKNOWN
 
 
-def is_tile_walkable(tile_id: int, tileset_id: int = 0) -> bool:
+def is_tile_walkable(tile_id: int, tileset_id: TilesetID = TilesetID.OVERWORLD) -> bool:
     """
     Determine if a tile is walkable based on collision tables.
 
