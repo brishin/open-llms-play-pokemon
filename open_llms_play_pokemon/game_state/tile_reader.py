@@ -1,6 +1,7 @@
 import numpy as np
-from pyboy import PyBoy
+from pyboy import PyBoy, PyBoyMemoryView
 
+from .data.memory_addresses import MemoryAddresses
 from .data.tile_data_constants import DOOR_TILES, GRASS_TILES, TilesetID
 from .game_state import PokemonRedGameState
 from .tile_data import (
@@ -11,13 +12,131 @@ from .tile_data import (
     is_tile_walkable,
 )
 
+# Core tile reading functions using PyBoy memory API with type-safe MemoryAddresses
+
+
+def get_tile_id(memory_view: PyBoyMemoryView, x: int, y: int) -> int:
+    """
+    Read tile ID from wTileMap buffer using type-safe memory access.
+
+    Args:
+        memory_view: PyBoy memory view for type-safe memory access
+        x: Screen X coordinate (0-19)
+        y: Screen Y coordinate (0-17)
+
+    Returns:
+        Tile ID at the specified screen position
+    """
+    if not (0 <= x < 20 and 0 <= y < 18):
+        raise ValueError(f"Invalid screen coordinates: ({x}, {y})")
+
+    offset = (y * 20) + x
+    return memory_view[MemoryAddresses.tile_map_buffer + offset]
+
+
+def get_map_coordinates(
+    memory_view: PyBoyMemoryView, screen_x: int, screen_y: int
+) -> tuple[int, int]:
+    """
+    Convert screen coordinates to absolute map coordinates using player position.
+
+    Args:
+        memory_view: PyBoy memory view for accessing player position
+        screen_x: Screen X coordinate (0-19)
+        screen_y: Screen Y coordinate (0-17)
+
+    Returns:
+        Tuple of (map_x, map_y) absolute coordinates
+    """
+    player_x = memory_view[MemoryAddresses.x_coord]
+    player_y = memory_view[MemoryAddresses.y_coord]
+
+    # Convert screen coordinates to map coordinates
+    # Screen center is at (10, 9), so offset from player position
+    map_x = player_x + screen_x - 10
+    map_y = player_y + screen_y - 9
+
+    return map_x, map_y
+
+
+def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
+    """
+    Check if a tile ID is in the collision table using PyBoy memory access.
+
+    Args:
+        memory_view: PyBoy memory view for reading collision data
+        tile_id: Tile ID to check for collision
+
+    Returns:
+        True if tile blocks movement, False if walkable
+    """
+    try:
+        # Read collision table pointer (2 bytes, little endian)
+        collision_ptr_low = memory_view[MemoryAddresses.tileset_collision_ptr]
+        collision_ptr_high = memory_view[MemoryAddresses.tileset_collision_ptr + 1]
+        collision_ptr = collision_ptr_low | (collision_ptr_high << 8)
+
+        # Read collision table until FF termination
+        offset = 0
+        while True:
+            collision_tile = memory_view[collision_ptr + offset]
+            if collision_tile == 0xFF:  # End of table
+                break
+            if collision_tile == tile_id:
+                return True  # Tile is in collision table (blocked)
+            offset += 1
+            if offset > 100:  # Safety limit
+                break
+
+        return False  # Tile not in collision table (walkable)
+    except Exception:
+        # Fallback to tileset-specific collision tables if memory read fails
+        current_tileset = TilesetID(memory_view[MemoryAddresses.current_tileset])
+        return not is_tile_walkable(tile_id, current_tileset)
+
+
+def get_sprite_at_position(
+    memory_view: PyBoyMemoryView, screen_x: int, screen_y: int
+) -> int:
+    """
+    Detect sprite at screen position using PyBoy memory access to sprite data.
+
+    Args:
+        memory_view: PyBoy memory view for accessing sprite data
+        screen_x: Screen X coordinate (0-19)
+        screen_y: Screen Y coordinate (0-17)
+
+    Returns:
+        Sprite offset if sprite found at position, 0 if no sprite
+    """
+    try:
+        # Convert screen coordinates to pixel coordinates
+        pixel_x = screen_x * 8
+        pixel_y = screen_y * 8
+
+        # Check up to 16 sprite slots (standard for Game Boy)
+        for sprite_id in range(16):
+            sprite_base = MemoryAddresses.sprite_state_data + (sprite_id * 16)
+
+            # Read sprite position (SPRITESTATEDATA structure)
+            sprite_x = memory_view[sprite_base + 6]  # SPRITESTATEDATA1_XPIXELS
+            sprite_y = memory_view[sprite_base + 4]  # SPRITESTATEDATA1_YPIXELS
+
+            # Check if sprite is at the target position (8x8 tile)
+            if abs(sprite_x - pixel_x) < 8 and abs(sprite_y - pixel_y) < 8:
+                return sprite_id + 1  # Return non-zero sprite offset
+
+        return 0  # No sprite found
+    except Exception:
+        return 0  # Return 0 if sprite detection fails
+
 
 class TileReader:
     """
-    Reads and processes tile data from Pokemon Red using PyBoy.
+    Reads and processes tile data from Pokemon Red using PyBoy memory API.
 
-    Combines visual tile information from game_area() with collision data
-    and game state to create comprehensive tile matrices.
+    Combines visual tile information with collision data and game state
+    to create comprehensive tile matrices using type-safe memory access.
     """
 
     def __init__(self, pyboy: "PyBoy"):
@@ -28,13 +147,6 @@ class TileReader:
             pyboy: PyBoy instance (required)
         """
         self.pyboy = pyboy
-        self._game_wrapper = None
-
-    def _get_game_wrapper(self):
-        """Get or create the game wrapper for accessing game_area()."""
-        if self._game_wrapper is None:
-            self._game_wrapper = self.pyboy.game_wrapper
-        return self._game_wrapper
 
     def get_tile_matrix(
         self, game_state: PokemonRedGameState, game_area_offset: tuple = (0, 0)
@@ -49,12 +161,27 @@ class TileReader:
         Returns:
             TileMatrix with full tile information
         """
-        game_wrapper = self._get_game_wrapper()
-        if game_wrapper is None:
+        if self.pyboy.game_wrapper is None:
             raise ValueError("Game wrapper not available")
 
-        # Get the raw tile matrix from PyBoy
-        raw_game_area = game_wrapper.game_area()
+        # Get PyBoy memory view for type-safe access
+        memory_view = self.pyboy.memory
+
+        # Check if map is stable before processing
+        loading_status = memory_view[MemoryAddresses.map_loading_status]
+        if loading_status != 0:
+            # Map is transitioning, return empty matrix
+            return TileMatrix(
+                tiles=[],
+                width=0,
+                height=0,
+                current_map=game_state.current_map,
+                player_x=game_state.player_x,
+                player_y=game_state.player_y,
+            )
+
+        # Get the raw tile matrix from PyBoy (fallback for compatibility)
+        raw_game_area = self.pyboy.game_wrapper.game_area()
 
         # Convert to numpy array for easier processing
         if hasattr(raw_game_area, "base"):
@@ -65,23 +192,46 @@ class TileReader:
 
         height, width = game_area_array.shape
 
-        # Get current tileset ID (we might need to derive this from game state)
-        current_tileset = self._get_current_tileset(game_state)
+        # Get current tileset ID using type-safe memory access
+        current_tileset = TilesetID(memory_view[MemoryAddresses.current_tileset])
 
         # Build the tile matrix
         tiles = []
         for y in range(height):
             row = []
             for x in range(width):
-                tile_id = int(game_area_array[y, x])
+                # Use enhanced tile reading functions with type-safe memory access
+                try:
+                    # Read tile ID using new memory API function
+                    if x < 20 and y < 18:  # Within screen bounds
+                        tile_id = get_tile_id(memory_view, x, y)
+                    else:
+                        # Fallback to game_area for tiles outside screen buffer
+                        tile_id = int(game_area_array[y, x])
+                except (IndexError, ValueError):
+                    # Fallback to game_area if memory read fails
+                    tile_id = int(game_area_array[y, x])
 
-                # Calculate absolute map coordinates
-                map_x = game_state.player_x + x + game_area_offset[0] - width // 2
-                map_y = game_state.player_y + y + game_area_offset[1] - height // 2
+                # Calculate absolute map coordinates using new function
+                if x < 20 and y < 18:
+                    map_x, map_y = get_map_coordinates(memory_view, x, y)
+                else:
+                    # Fallback calculation for compatibility
+                    map_x = game_state.player_x + x + game_area_offset[0] - width // 2
+                    map_y = game_state.player_y + y + game_area_offset[1] - height // 2
 
-                # Determine tile properties
-                is_walkable = is_tile_walkable(tile_id, current_tileset)
-                tile_type = classify_tile_type(tile_id, is_walkable, current_tileset)
+                # Determine tile properties using enhanced collision detection
+                try:
+                    # Use new collision detection function
+                    is_collision = is_collision_tile(memory_view, tile_id)
+                    is_walkable_tile = not is_collision
+                except Exception:
+                    # Fallback to tileset-specific collision tables
+                    is_walkable_tile = is_tile_walkable(tile_id, current_tileset)
+
+                tile_type = classify_tile_type(
+                    tile_id, is_walkable_tile, current_tileset
+                )
                 is_encounter = (
                     current_tileset in GRASS_TILES
                     and tile_id in GRASS_TILES[current_tileset]
@@ -91,10 +241,17 @@ class TileReader:
                     and tile_id in DOOR_TILES[current_tileset]
                 ) or tile_type == TileType.WARP
 
-                # Check for sprites (higher tile IDs often indicate sprites)
+                # Enhanced sprite detection using new memory API function
                 sprite_offset = 0
-                if hasattr(game_wrapper, "sprite_offset"):
-                    sprite_offset = game_wrapper.sprite_offset
+                if x < 20 and y < 18:  # Within screen bounds
+                    try:
+                        sprite_offset = get_sprite_at_position(memory_view, x, y)
+                    except Exception:
+                        sprite_offset = 0
+                else:
+                    # Fallback for compatibility
+                    if hasattr(self.pyboy.game_wrapper, "sprite_offset"):
+                        sprite_offset = self.pyboy.game_wrapper.sprite_offset
 
                 tile_data = TileData(
                     # Basic Identification
@@ -107,7 +264,7 @@ class TileReader:
                     tileset_id=current_tileset,
                     raw_value=tile_id,
                     # Movement/Collision
-                    is_walkable=is_walkable,
+                    is_walkable=is_walkable_tile,
                     is_ledge_tile=False,  # TODO: Implement ledge detection
                     ledge_direction=None,
                     movement_modifier=1.0,
@@ -210,28 +367,29 @@ class TileReader:
 
     def _get_current_tileset(self, game_state: PokemonRedGameState) -> TilesetID:
         """
-        Determine the current tileset ID based on game state.
-
-        This is a simplified implementation - in practice, you'd need to
-        map current_map to tileset IDs based on Pokemon Red's map data.
+        Determine the current tileset ID using type-safe memory access.
 
         Args:
             game_state: Current game state
 
         Returns:
-            TilesetID
+            TilesetID from memory or fallback mapping
         """
-        # Simplified mapping - in reality this would be more complex
-        map_to_tileset = {
-            0: TilesetID.OVERWORLD,  # Pallet Town
-            1: TilesetID.OVERWORLD,  # Route 1
-            2: TilesetID.REDS_HOUSE_1,  # Red's House
-            3: TilesetID.POKECENTER,  # Pokemon Center
-            4: TilesetID.FOREST,  # Viridian Forest
-            # Add more mappings based on actual Pokemon Red data
-        }
-
-        return map_to_tileset.get(game_state.current_map, TilesetID.OVERWORLD)
+        try:
+            # Use type-safe memory access to get current tileset directly
+            tileset_id = self.pyboy.memory[MemoryAddresses.current_tileset]
+            return TilesetID(tileset_id)
+        except (ValueError, Exception):
+            # Fallback to simplified mapping if memory read fails
+            map_to_tileset = {
+                0: TilesetID.OVERWORLD,  # Pallet Town
+                1: TilesetID.OVERWORLD,  # Route 1
+                2: TilesetID.REDS_HOUSE_1,  # Red's House
+                3: TilesetID.POKECENTER,  # Pokemon Center
+                4: TilesetID.FOREST,  # Viridian Forest
+                # Add more mappings based on actual Pokemon Red data
+            }
+            return map_to_tileset.get(game_state.current_map, TilesetID.OVERWORLD)
 
     def analyze_area_around_player(
         self, game_state: PokemonRedGameState, radius: int = 3
