@@ -82,9 +82,14 @@ def test_create_tile_data_integration(monkeypatch):
 
     # Apply mocks using monkeypatch
     import game_state.tile_reader as tile_reader_module
+
     monkeypatch.setattr(tile_reader_module, "get_tile_id", mock_get_tile_id)
-    monkeypatch.setattr(tile_reader_module, "get_map_coordinates", mock_get_map_coordinates)
-    monkeypatch.setattr(tile_reader_module, "get_sprite_at_position", mock_get_sprite_at_position)
+    monkeypatch.setattr(
+        tile_reader_module, "get_map_coordinates", mock_get_map_coordinates
+    )
+    monkeypatch.setattr(
+        tile_reader_module, "get_sprite_at_position", mock_get_sprite_at_position
+    )
     monkeypatch.setattr(tile_reader_module, "is_collision_tile", mock_is_collision_tile)
 
     # Test create_tile_data
