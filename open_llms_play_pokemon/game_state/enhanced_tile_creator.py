@@ -159,17 +159,10 @@ def create_tile_data(memory_view: PyBoyMemoryView, x: int, y: int) -> TileData:
     # Classify tile type using existing system
     tile_type = classify_tile_type(tile_id, is_walkable_tile, tileset_id)
 
-    # Enhanced property detection using detector class
-    detector = TilePropertyDetector(memory_view)
-    ledge_direction, is_ledge = detector.detect_ledge_info(tileset_id, tile_id)
-    audio_props = detector.detect_audio_properties(tileset_id, tile_id)
-    trainer_sight = detector.detect_trainer_sight_line(map_x, map_y)
-    special_props = detector.detect_special_properties(
-        tileset_id, tile_id, map_x, map_y
+    # Enhanced property detection using consolidated detector
+    all_props = TilePropertyDetector.detect_all_properties(
+        memory_view, tileset_id, tile_id, map_x, map_y
     )
-    animation_info = detector.detect_animation_info(tileset_id, tile_id)
-    interaction_props = detector.detect_interaction_properties(tileset_id, tile_id)
-    environmental_props = detector.detect_environmental_properties(tileset_id, tile_id)
 
     return TileData(
         # Basic Identification
@@ -183,39 +176,39 @@ def create_tile_data(memory_view: PyBoyMemoryView, x: int, y: int) -> TileData:
         raw_value=tile_id,
         # Movement/Collision
         is_walkable=is_walkable_tile,
-        is_ledge_tile=is_ledge,
-        ledge_direction=ledge_direction,
-        movement_modifier=special_props.get("movement_modifier", 1.0),
+        is_ledge_tile=all_props["is_ledge"],
+        ledge_direction=all_props["ledge_direction"],
+        movement_modifier=all_props.get("movement_modifier", 1.0),
         # Environmental
-        is_encounter_tile=environmental_props["is_encounter"],
-        is_warp_tile=environmental_props["is_warp"],
-        is_animated=animation_info["is_animated"],
-        light_level=special_props.get("light_level", 15),
+        is_encounter_tile=all_props["is_encounter"],
+        is_warp_tile=all_props["is_warp"],
+        is_animated=all_props["is_animated"],
+        light_level=all_props.get("light_level", 15),
         # Interactions
-        has_sign=interaction_props["has_sign"],
-        has_bookshelf=interaction_props["has_bookshelf"],
-        strength_boulder=interaction_props["strength_boulder"],
-        cuttable_tree=interaction_props["cuttable_tree"],
-        pc_accessible=interaction_props["pc_accessible"],
+        has_sign=all_props["has_sign"],
+        has_bookshelf=all_props["has_bookshelf"],
+        strength_boulder=all_props["strength_boulder"],
+        cuttable_tree=all_props["cuttable_tree"],
+        pc_accessible=all_props["pc_accessible"],
         # Battle System
-        trainer_sight_line=trainer_sight["in_sight_line"],
-        trainer_id=trainer_sight.get("trainer_id"),
-        hidden_item_id=special_props.get("hidden_item_id"),
-        requires_itemfinder=special_props.get("requires_itemfinder", False),
+        trainer_sight_line=all_props["in_sight_line"],
+        trainer_id=all_props.get("trainer_id"),
+        hidden_item_id=all_props.get("hidden_item_id"),
+        requires_itemfinder=all_props.get("requires_itemfinder", False),
         # Special Zones
-        safari_zone_steps=special_props.get("safari_zone_steps", False),
-        game_corner_tile=special_props.get("game_corner_tile", False),
-        is_fly_destination=special_props.get("is_fly_destination", False),
+        safari_zone_steps=all_props.get("safari_zone_steps", False),
+        game_corner_tile=all_props.get("game_corner_tile", False),
+        is_fly_destination=all_props.get("is_fly_destination", False),
         # Audio/Visual
-        has_footstep_sound=audio_props["has_footstep_sound"],
-        sprite_priority=animation_info.get("sprite_priority", 0),
-        background_priority=animation_info.get("background_priority", 0),
-        elevation_pair=special_props.get("elevation_pair"),
+        has_footstep_sound=all_props["has_footstep_sound"],
+        sprite_priority=all_props.get("sprite_priority", 0),
+        background_priority=all_props.get("background_priority", 0),
+        elevation_pair=all_props.get("elevation_pair"),
         # Additional Properties
         sprite_offset=sprite_offset,
-        blocks_light=special_props.get("blocks_light", False),
-        water_current_direction=environmental_props.get("water_current_direction"),
-        warp_destination_map=environmental_props.get("warp_destination_map"),
-        warp_destination_x=environmental_props.get("warp_destination_x"),
-        warp_destination_y=environmental_props.get("warp_destination_y"),
+        blocks_light=all_props.get("blocks_light", False),
+        water_current_direction=all_props.get("water_current_direction"),
+        warp_destination_map=all_props.get("warp_destination_map"),
+        warp_destination_x=all_props.get("warp_destination_x"),
+        warp_destination_y=all_props.get("warp_destination_y"),
     )

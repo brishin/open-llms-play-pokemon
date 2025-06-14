@@ -1,8 +1,8 @@
 """
-Tile property detection system for Pokemon Red.
+Consolidated tile property detection system.
 
-This module consolidates all tile property detection logic into a single class,
-improving organization and maintainability.
+Refactors the scattered detection functions from enhanced_tile_creator.py
+into a single organized class for better maintainability and testing.
 """
 
 from pyboy import PyBoyMemoryView
@@ -24,19 +24,11 @@ from .data.tile_data_constants import (
 
 
 class TilePropertyDetector:
-    """Detects various properties of tiles based on tileset and tile ID."""
+    """Consolidated detector for all tile properties."""
 
-    def __init__(self, memory_view: PyBoyMemoryView):
-        """
-        Initialize the detector with a memory view.
-
-        Args:
-            memory_view: PyBoy memory view for accessing game memory
-        """
-        self.memory_view = memory_view
-
+    @staticmethod
     def detect_ledge_info(
-        self, tileset_id: TilesetID, tile_id: int
+        tileset_id: TilesetID, tile_id: int
     ) -> tuple[str | None, bool]:
         """
         Detect ledge properties using pokered ledge data.
@@ -49,7 +41,7 @@ class TilePropertyDetector:
             Tuple of (ledge_direction, is_ledge_tile)
         """
         # Check against pokered ledge data structure
-        for _facing_direction, _standing_tile, ledge_tile, input_required in LEDGE_DATA:
+        for _, _, ledge_tile, input_required in LEDGE_DATA:
             if tile_id == ledge_tile:
                 # Extract direction from input_required (e.g., "D_DOWN" -> "down")
                 direction = input_required.split("_")[-1].lower()
@@ -63,7 +55,8 @@ class TilePropertyDetector:
 
         return None, False
 
-    def detect_audio_properties(self, tileset_id: TilesetID, tile_id: int) -> dict:
+    @staticmethod
+    def detect_audio_properties(tileset_id: TilesetID, tile_id: int) -> dict:
         """
         Detect audio properties for footstep sounds and environmental audio.
 
@@ -76,29 +69,27 @@ class TilePropertyDetector:
         """
         # Default footstep sound for most tiles
         has_footstep = True
-        audio_type = "normal"
 
         # Water tiles typically have splash sounds
         if tileset_id in WATER_TILES and tile_id in WATER_TILES[tileset_id]:
-            has_footstep = True
-            audio_type = "splash"
-
-        # Grass tiles might have rustling sounds
-        elif tileset_id in GRASS_TILES and tile_id in GRASS_TILES[tileset_id]:
-            audio_type = "grass"
+            has_footstep = True  # Different sound but still has audio
 
         # Some special tiles might be silent (would need pokered audio analysis)
 
         return {
             "has_footstep_sound": has_footstep,
-            "audio_type": audio_type,
+            "audio_type": "normal",  # Could be "splash", "grass", "sand", etc.
         }
 
-    def detect_trainer_sight_line(self, map_x: int, map_y: int) -> dict:
+    @staticmethod
+    def detect_trainer_sight_line(
+        memory_view: PyBoyMemoryView, map_x: int, map_y: int  # noqa: ARG002
+    ) -> dict:
         """
         Detect if position is in trainer sight line using sprite data analysis.
 
         Args:
+            memory_view: PyBoy memory view for sprite access
             map_x: Absolute map X coordinate
             map_y: Absolute map Y coordinate
 
@@ -118,12 +109,8 @@ class TilePropertyDetector:
                 sprite_base = MemoryAddresses.sprite_state_data + (sprite_id * 16)
 
                 # Read sprite data (would need trainer sprite identification)
-                _sprite_x = self.memory_view[
-                    sprite_base + 6
-                ]  # SPRITESTATEDATA1_XPIXELS
-                _sprite_y = self.memory_view[
-                    sprite_base + 4
-                ]  # SPRITESTATEDATA1_YPIXELS
+                _sprite_x = memory_view[sprite_base + 6]  # SPRITESTATEDATA1_XPIXELS
+                _sprite_y = memory_view[sprite_base + 4]  # SPRITESTATEDATA1_YPIXELS
 
                 # This would need proper trainer detection logic
                 # For now, placeholder implementation
@@ -141,8 +128,9 @@ class TilePropertyDetector:
                 "sight_distance": 0,
             }
 
+    @staticmethod
     def detect_special_properties(
-        self, tileset_id: TilesetID, tile_id: int, map_x: int, map_y: int
+        tileset_id: TilesetID, tile_id: int, map_x: int, map_y: int  # noqa: ARG002
     ) -> dict:
         """
         Detect special zone properties and unique tile behaviors.
@@ -191,7 +179,8 @@ class TilePropertyDetector:
 
         return properties
 
-    def detect_animation_info(self, tileset_id: TilesetID, tile_id: int) -> dict:
+    @staticmethod
+    def detect_animation_info(tileset_id: TilesetID, tile_id: int) -> dict:
         """
         Detect animation properties and sprite priorities.
 
@@ -224,9 +213,8 @@ class TilePropertyDetector:
 
         return animation_info
 
-    def detect_interaction_properties(
-        self, tileset_id: TilesetID, tile_id: int
-    ) -> dict:
+    @staticmethod
+    def detect_interaction_properties(tileset_id: TilesetID, tile_id: int) -> dict:
         """
         Detect interactive elements like signs, bookshelves, trees, etc.
 
@@ -266,9 +254,8 @@ class TilePropertyDetector:
 
         return interactions
 
-    def detect_environmental_properties(
-        self, tileset_id: TilesetID, tile_id: int
-    ) -> dict:
+    @staticmethod
+    def detect_environmental_properties(tileset_id: TilesetID, tile_id: int) -> dict:
         """
         Detect environmental properties like encounters, warps, water currents.
 
@@ -303,3 +290,53 @@ class TilePropertyDetector:
             pass
 
         return env_props
+
+    @classmethod
+    def detect_all_properties(
+        cls,
+        memory_view: PyBoyMemoryView,
+        tileset_id: TilesetID,
+        tile_id: int,
+        map_x: int,
+        map_y: int,
+    ) -> dict:
+        """
+        Detect all tile properties in a single call.
+
+        Args:
+            memory_view: PyBoy memory view for sprite access
+            tileset_id: Current tileset ID
+            tile_id: Tile ID to check
+            map_x: Absolute map X coordinate
+            map_y: Absolute map Y coordinate
+
+        Returns:
+            Dictionary containing all detected properties
+        """
+        # Detect all property types
+        ledge_direction, is_ledge = cls.detect_ledge_info(tileset_id, tile_id)
+        audio_props = cls.detect_audio_properties(tileset_id, tile_id)
+        trainer_sight = cls.detect_trainer_sight_line(memory_view, map_x, map_y)
+        special_props = cls.detect_special_properties(tileset_id, tile_id, map_x, map_y)
+        animation_info = cls.detect_animation_info(tileset_id, tile_id)
+        interaction_props = cls.detect_interaction_properties(tileset_id, tile_id)
+        environmental_props = cls.detect_environmental_properties(tileset_id, tile_id)
+
+        # Combine all properties into a single dictionary
+        return {
+            # Ledge properties
+            "ledge_direction": ledge_direction,
+            "is_ledge": is_ledge,
+            # Audio properties
+            **audio_props,
+            # Trainer sight line
+            **trainer_sight,
+            # Special properties
+            **special_props,
+            # Animation properties
+            **animation_info,
+            # Interaction properties
+            **interaction_props,
+            # Environmental properties
+            **environmental_props,
+        }
