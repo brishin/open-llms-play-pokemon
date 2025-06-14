@@ -46,7 +46,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.pyright]
-include = ["open_llms_play_pokemon", "inference"]
+include = ["open_llms_play_pokemon", "inference", "tests"]
 exclude = ["build", "game", ".venv"]
 pythonVersion = "3.10"
 typeCheckingMode = "standard"
@@ -56,3 +56,5 @@ reportUnusedImport = true
 reportUnusedClass = true
 reportUnusedFunction = true
 reportUnusedVariable = true
+# Allow tests to import from open_llms_play_pokemon as if it were on the path
+extraPaths = ["./open_llms_play_pokemon"]
