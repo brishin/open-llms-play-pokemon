@@ -4,6 +4,7 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import NamedTuple
 
+import click
 import dspy
 import mlflow
 from dotenv import load_dotenv
@@ -111,17 +112,24 @@ class PokemonRedDSPyAgent(dspy.Module):
 
 
 class PokemonRedDSPyPlayer:
-    def __init__(self, headless: bool = False):
+    def __init__(
+        self,
+        headless: bool = False,
+        model: str = "openrouter/google/gemma-3-4b-it",
+        max_steps: int = 100,
+    ):
         self.logger = logging.getLogger(__name__)
+        self.max_steps = max_steps
+        self.current_step = 0
 
         # Set up DSPy language model
-        model_name = "openrouter/google/gemini-2.5-pro-preview"
-        mlflow.set_tag("llm_name", model_name)
+        mlflow.set_tag("llm_name", model)
+        mlflow.set_tag("max_steps", max_steps)
         lm = dspy.LM(
-            model=model_name,
+            model=model,
             api_base="https://openrouter.ai/api/v1",
             api_key=os.getenv("OPENROUTER_API_KEY"),
-            max_tokens=1_000,
+            max_tokens=2_000,
             temperature=0.7,
         )
         dspy.configure(lm=lm)
@@ -187,30 +195,33 @@ class PokemonRedDSPyPlayer:
         try:
             self.emulator.load_state("init.state")
 
-            # Get all game data using unified consolidated method
-            memory_view = self.emulator.pyboy.memory
-            consolidated_state = self.memory_reader.get_consolidated_game_state(
-                memory_view
-            )
-
-            screen_base64 = self.emulator.get_screen_base64()
-
-            # Create game state with consolidated data
-            game_state = GameState(
-                screen_base64=screen_base64,
-                context="You are playing Pokemon Red on the Game Boy. Progress through the game by exploring, catching Pokemon, battling trainers, and completing the main storyline.",
-                comprehensive_data=consolidated_state.to_dict(),
-                game_analysis=None,  # All data is now in comprehensive_data
-            )
-
-            parsed_action = self.agent.forward(game_state)
-            success = self.emulator.execute_action(parsed_action)
-
-            if not success:
-                self.logger.warning(
-                    "Action parsing/execution failed, falling back to 'a' button"
+            while self.current_step < self.max_steps:
+                # Get all game data using unified consolidated method
+                memory_view = self.emulator.pyboy.memory
+                consolidated_state = self.memory_reader.get_consolidated_game_state(
+                    memory_view
                 )
-                self.emulator.fallback_action()
+
+                screen_base64 = self.emulator.get_screen_base64()
+
+                # Create game state with consolidated data
+                game_state = GameState(
+                    screen_base64=screen_base64,
+                    context="You are playing Pokemon Red on the Game Boy. Progress through the game by exploring, catching Pokemon, battling trainers, and completing the main storyline.",
+                    comprehensive_data=consolidated_state.to_dict(),
+                    game_analysis=None,  # All data is now in comprehensive_data
+                )
+
+                parsed_action = self.agent.forward(game_state)
+                success = self.emulator.execute_action(parsed_action)
+
+                if not success:
+                    self.logger.warning(
+                        "Action parsing/execution failed, falling back to 'a' button"
+                    )
+                    self.emulator.fallback_action()
+
+                self.current_step += 1
 
         except Exception as e:
             self.logger.error(f"Error starting game: {e}")
@@ -227,7 +238,16 @@ class PokemonRedDSPyPlayer:
         self.cleanup()
 
 
-def main():
+@click.command()
+@click.option("--steps", default=5, help="Maximum number of steps to run")
+@click.option(
+    "--model",
+    default="openrouter/google/gemma-3-4b-it",
+    help="Model to use for the agent",
+)
+@click.option("--headless", is_flag=True, help="Run in headless mode")
+def main(steps: int, model: str, headless: bool):
+    """Run the DSPy-based Pokemon Red player."""
     mlflow.dspy.autolog()  # type: ignore
     mlflow.set_tracking_uri("http://localhost:8080")
     mlflow.set_experiment("open-llms-play-pokemon")
@@ -236,10 +256,12 @@ def main():
     logging.getLogger("pyboy").setLevel(logging.WARNING)
     logging.getLogger("LiteLLM").setLevel(logging.WARNING)
 
-    """Main function to run the DSPy-based Pokemon Red player."""
-    with mlflow.start_run(), PokemonRedDSPyPlayer() as player:
+    with (
+        mlflow.start_run(),
+        PokemonRedDSPyPlayer(headless=headless, model=model, max_steps=steps) as player,
+    ):
         player.start_game()
 
 
 if __name__ == "__main__":
-    main()
+    main()  # type: ignore

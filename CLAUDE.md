@@ -5,7 +5,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Common Commands
 
 - **Run the main Pokemon player**: `python -m open_llms_play_pokemon.agents.main`
-- **Run the DSPy-based Pokemon player**: `python -m open_llms_play_pokemon.agents.main_dspy`
+- **Run the DSPy-based Pokemon player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 5 --headless` (Use the given arguments unless specified otherwise)
 - **Install dependencies**: `uv sync` (project uses uv for dependency management)
 - **Run all tests**: `uv run pytest tests/ -v`
 - **Run specific test**: `uv run pytest tests/test_action_parser.py -v`
