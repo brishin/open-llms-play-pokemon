@@ -1,10 +1,9 @@
 import numpy as np
 from pyboy import PyBoy
 
+from .data.tile_data_constants import DOOR_TILES, GRASS_TILES, TilesetID
 from .game_state import PokemonRedGameState
 from .tile_data import (
-    GRASS_TILES,
-    WARP_TILES,
     TileData,
     TileMatrix,
     TileType,
@@ -83,8 +82,14 @@ class TileReader:
                 # Determine tile properties
                 is_walkable = is_tile_walkable(tile_id, current_tileset)
                 tile_type = classify_tile_type(tile_id, is_walkable, current_tileset)
-                is_encounter = tile_id in GRASS_TILES or tile_type == TileType.GRASS
-                is_warp = tile_id in WARP_TILES or tile_type == TileType.WARP
+                is_encounter = (
+                    current_tileset in GRASS_TILES
+                    and tile_id in GRASS_TILES[current_tileset]
+                ) or tile_type == TileType.GRASS
+                is_warp = (
+                    current_tileset in DOOR_TILES
+                    and tile_id in DOOR_TILES[current_tileset]
+                ) or tile_type == TileType.WARP
 
                 # Check for sprites (higher tile IDs often indicate sprites)
                 sprite_offset = 0
@@ -92,17 +97,52 @@ class TileReader:
                     sprite_offset = game_wrapper.sprite_offset
 
                 tile_data = TileData(
+                    # Basic Identification
                     tile_id=tile_id,
                     x=x,
                     y=y,
                     map_x=map_x,
                     map_y=map_y,
                     tile_type=tile_type,
+                    tileset_id=current_tileset,
+                    raw_value=tile_id,
+                    # Movement/Collision
                     is_walkable=is_walkable,
+                    is_ledge_tile=False,  # TODO: Implement ledge detection
+                    ledge_direction=None,
+                    movement_modifier=1.0,
+                    # Environmental
                     is_encounter_tile=is_encounter,
                     is_warp_tile=is_warp,
+                    is_animated=False,  # TODO: Implement animation detection
+                    light_level=15,  # Default full light
+                    # Interactions
+                    has_sign=False,  # TODO: Implement sign detection
+                    has_bookshelf=False,
+                    strength_boulder=False,
+                    cuttable_tree=False,
+                    pc_accessible=False,
+                    # Battle System
+                    trainer_sight_line=False,  # TODO: Implement trainer detection
+                    trainer_id=None,
+                    hidden_item_id=None,
+                    requires_itemfinder=False,
+                    # Special Zones
+                    safari_zone_steps=False,
+                    game_corner_tile=False,
+                    is_fly_destination=False,
+                    # Audio/Visual
+                    has_footstep_sound=True,
+                    sprite_priority=0,
+                    background_priority=0,
+                    elevation_pair=None,
+                    # Additional Properties
                     sprite_offset=sprite_offset,
-                    raw_value=tile_id,
+                    blocks_light=False,
+                    water_current_direction=None,
+                    warp_destination_map=None,
+                    warp_destination_x=None,
+                    warp_destination_y=None,
                 )
                 row.append(tile_data)
             tiles.append(row)
@@ -168,7 +208,7 @@ class TileReader:
         ]
         return [(tile.x, tile.y) for tile in encounter_tiles]
 
-    def _get_current_tileset(self, game_state: PokemonRedGameState) -> int:
+    def _get_current_tileset(self, game_state: PokemonRedGameState) -> TilesetID:
         """
         Determine the current tileset ID based on game state.
 
@@ -179,19 +219,19 @@ class TileReader:
             game_state: Current game state
 
         Returns:
-            Tileset ID
+            TilesetID
         """
         # Simplified mapping - in reality this would be more complex
         map_to_tileset = {
-            0: 0,  # Pallet Town -> Overworld tileset
-            1: 0,  # Route 1 -> Overworld tileset
-            2: 1,  # Red's House -> House tileset
-            3: 2,  # Pokemon Center -> Pokemon Center tileset
-            4: 3,  # Viridian Forest -> Forest tileset
+            0: TilesetID.OVERWORLD,  # Pallet Town
+            1: TilesetID.OVERWORLD,  # Route 1
+            2: TilesetID.REDS_HOUSE_1,  # Red's House
+            3: TilesetID.POKECENTER,  # Pokemon Center
+            4: TilesetID.FOREST,  # Viridian Forest
             # Add more mappings based on actual Pokemon Red data
         }
 
-        return map_to_tileset.get(game_state.current_map, 0)
+        return map_to_tileset.get(game_state.current_map, TilesetID.OVERWORLD)
 
     def analyze_area_around_player(
         self, game_state: PokemonRedGameState, radius: int = 3

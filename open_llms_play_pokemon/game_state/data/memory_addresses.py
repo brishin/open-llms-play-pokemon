@@ -60,9 +60,9 @@ class MemoryAddresses(IntEnum):
     vram_bg_map = 0x9800  # vBGMap0 - VRAM background map
 
     # Tileset information
-    current_tileset = 0xFFD7  # wCurTileset - Current tileset ID
-    tileset_collision_ptr = 0x1878  # wTilesetCollisionPtr - Pointer to collision data
-    grass_tile_id = 0x1882  # wGrassTile - Grass tile ID for current tileset
+    current_tileset = 0xD367  # wCurMapTileset - Current tileset ID
+    tileset_collision_ptr = 0xD530  # wTilesetCollisionPtr - Pointer to collision data
+    grass_tile_id = 0xD535  # wGrassTile - Grass tile ID for current tileset
 
     # Map loading and transition state
     map_loading_status = 0xD36A  # wMapLoadingStatus - Check during transitions
