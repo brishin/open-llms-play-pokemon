@@ -1,17 +1,15 @@
 from collections.abc import Sequence
 
-from pyboy import PyBoy, PyBoyMemoryView
-from pyboy.plugins.game_wrapper_pokemon_gen1 import GameWrapperPokemonGen1
+from pyboy import PyBoyMemoryView
 
-from .consolidated_state import (
-    ConsolidatedGameState,
+from .data.memory_addresses import MemoryAddresses
+from .game_state import (
     DirectionsAvailable,
     PokemonHp,
+    PokemonRedGameState,
     TilePosition,
     TileWithDistance,
 )
-from .data.memory_addresses import MemoryAddresses
-from .game_state import PokemonRedGameState
 from .screen_analyzer import (
     analyze_screen,
     categorize_tiles,
@@ -27,15 +25,14 @@ class PokemonRedMemoryReader:
     def __init__(self, pyboy):
         self.pyboy = pyboy
 
-    @staticmethod
-    def parse_game_state(pyboy: PyBoy) -> PokemonRedGameState:
-        """Parse raw memory data into structured game state"""
-        memory_view = pyboy.memory
+    def parse_game_state(
+        self, memory_view: PyBoyMemoryView, step_counter: int = 0, timestamp: str = ""
+    ) -> PokemonRedGameState:
+        """Parse raw memory data into new PokemonRedGameState format"""
 
         # Read basic game state values
         party_count = memory_view[MemoryAddresses.party_count]
-        badges_binary = memory_view[MemoryAddresses.obtained_badges]
-        badges_count = bin(badges_binary).count("1")
+        badges_count = bin(memory_view[MemoryAddresses.obtained_badges]).count("1")
         is_in_battle = memory_view[MemoryAddresses.is_in_battle]
         current_map = memory_view[MemoryAddresses.current_map]
         player_x = memory_view[MemoryAddresses.x_coord]
@@ -62,16 +59,10 @@ class PokemonRedMemoryReader:
             max_hps = PokemonRedMemoryReader._read_multiple_16bit(
                 memory_view, max_hp_addrs[:count]
             )
-            party_hp = list(zip(current_hps, max_hps, strict=True))
-
-        game_wrapper = pyboy.game_wrapper
-        if isinstance(game_wrapper, GameWrapperPokemonGen1):
-            print(game_wrapper)
-            print(game_wrapper.game_area())
-            print(game_wrapper.game_area_collision())
-
-        # Read event flags using helper method
-        event_flags = PokemonRedMemoryReader._read_event_bits(memory_view)
+            party_hp = [
+                PokemonHp(current=current, max=max_hp)
+                for current, max_hp in zip(current_hps, max_hps, strict=True)
+            ]
 
         # Battle state
         player_mon_hp = None
@@ -88,10 +79,23 @@ class PokemonRedMemoryReader:
                 memory_view, battle_addrs
             )
 
-            player_mon_hp = (battle_hp_values[0], battle_hp_values[1])
-            enemy_mon_hp = (battle_hp_values[2], battle_hp_values[3])
+            player_mon_hp = PokemonHp(
+                current=battle_hp_values[0], max=battle_hp_values[1]
+            )
+            enemy_mon_hp = PokemonHp(
+                current=battle_hp_values[2], max=battle_hp_values[3]
+            )
+
+        # Read memory state
+        map_loading_status = memory_view[MemoryAddresses.map_loading_status]
+        current_tileset = memory_view[MemoryAddresses.current_tileset]
+
+        # Process all tile data using unified method
+        tile_data = self._process_tile_data(memory_view)
 
         return PokemonRedGameState(
+            step_counter=step_counter,
+            timestamp=timestamp,
             player_name=memory_view[MemoryAddresses.player_name],
             current_map=current_map,
             player_x=player_x,
@@ -100,11 +104,12 @@ class PokemonRedMemoryReader:
             party_pokemon_levels=party_levels,
             party_pokemon_hp=party_hp,
             badges_obtained=badges_count,
-            badges_binary=badges_binary,
             is_in_battle=bool(is_in_battle),
             player_mon_hp=player_mon_hp,
             enemy_mon_hp=enemy_mon_hp,
-            event_flags=event_flags,
+            map_loading_status=map_loading_status,
+            current_tileset=current_tileset,
+            **tile_data,
         )
 
     def _process_tile_data(self, memory_view: PyBoyMemoryView) -> dict:
@@ -140,86 +145,6 @@ class PokemonRedMemoryReader:
                 all_tiles, self.PLAYER_CENTER_X, self.PLAYER_CENTER_Y
             ),
         }
-
-    def get_consolidated_game_state(
-        self, memory_view: PyBoyMemoryView, step_counter: int = 0, timestamp: str = ""
-    ) -> ConsolidatedGameState:
-        """
-        Get all game data in a single, optimized call.
-        Returns all tiles without radius filtering.
-
-        Args:
-            memory_view: PyBoy memory view for type-safe memory access
-
-        Returns:
-            ConsolidatedGameState with all game data optimized for logging
-        """
-        # Parse base game state (with event_flags)
-        game_state = self.parse_game_state(self.pyboy)
-
-        # Process all tile data using unified method
-        tile_data = self._process_tile_data(memory_view)
-
-        # Read memory state
-        try:
-            map_loading_status = memory_view[MemoryAddresses.map_loading_status]
-            current_tileset = memory_view[MemoryAddresses.current_tileset]
-        except Exception:
-            map_loading_status = 0
-            current_tileset = 0
-
-        # Only include fields that exist in ConsolidatedGameState and convert HP data
-        game_data = game_state.to_dict()
-        filtered_game_data = {
-            k: v
-            for k, v in game_data.items()
-            if k
-            in [
-                "player_name",
-                "current_map",
-                "player_x",
-                "player_y",
-                "party_count",
-                "party_pokemon_levels",
-                "badges_obtained",
-                "is_in_battle",
-            ]
-        }
-
-        # Convert HP tuples to PokemonHp dataclasses
-        filtered_game_data["party_pokemon_hp"] = [
-            PokemonHp(current=current, max=max_hp)
-            for current, max_hp in game_state.party_pokemon_hp
-        ]
-
-        # Convert battle HP tuples to PokemonHp dataclasses
-        filtered_game_data["player_mon_hp"] = (
-            PokemonHp(
-                current=game_state.player_mon_hp[0], max=game_state.player_mon_hp[1]
-            )
-            if game_state.player_mon_hp
-            else None
-        )
-        filtered_game_data["enemy_mon_hp"] = (
-            PokemonHp(
-                current=game_state.enemy_mon_hp[0], max=game_state.enemy_mon_hp[1]
-            )
-            if game_state.enemy_mon_hp
-            else None
-        )
-
-        return ConsolidatedGameState(
-            # Runtime fields
-            step_counter=step_counter,
-            timestamp=timestamp,
-            # Game state fields (excluding event_flags and badges_binary)
-            **filtered_game_data,
-            # Memory state
-            map_loading_status=map_loading_status,
-            current_tileset=current_tileset,
-            # All tiles data
-            **tile_data,
-        )
 
     def _check_immediate_directions(
         self, all_tiles: list, player_center_x: int, player_center_y: int

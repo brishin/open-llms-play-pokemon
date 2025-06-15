@@ -91,3 +91,33 @@ The DSPy version (`agents/main_dspy.py`) provides a more structured approach wit
 - Do not add code comments unless the code is particularly complicated.
 - **IMPORTANT**: Always run `./check.sh` after making code changes to ensure formatting, linting, and type checking pass.
 - **DSPy Development**: When working with DSPy framework, reference `.cursor/rules/dspy.mdc` for best practices and guidelines.
+
+## Testing Conventions
+
+This project follows specific Python testing conventions using **pytest** as the primary testing framework.
+
+### **Test Structure and Organization**
+
+- **Test Directory**: All tests are located in `/tests/` at the project root
+- **File Naming**: Use `test_<module_name>.py` pattern (e.g., `test_game_state.py`, `test_screen_analyzer.py`)
+- **Function Naming**: Use descriptive `test_<behavior_description>()` names that clearly indicate what is being tested
+- **Class Naming**: Use `Test<ComponentName><Aspect>` pattern for test classes when grouping related tests
+
+### **Running Tests**
+
+- **All Tests**: `uv run pytest tests/ -v` (verbose output recommended)
+- **Specific Test File**: `uv run pytest tests/test_<module>.py -v`
+- **Integration with Quality Checks**: Tests are included in `./check.sh` script alongside formatting and linting
+
+### **Testing Patterns**
+
+#### **Mocking and Test Isolation**
+- Use `unittest.mock.Mock` and `MagicMock` for dependency isolation
+- Mock PyBoy memory views with custom `__getitem__` behavior for game state testing
+- Use `pytest.monkeypatch` for replacing functions during tests
+- Apply `@patch` decorators for external system mocking
+
+#### **Test Data Creation**
+- Create helper factory functions for reusable test objects (e.g., `create_test_tile_data()`)
+- Use hardcoded test values that represent realistic game states
+- Accept parameters in factory functions to customize test scenarios

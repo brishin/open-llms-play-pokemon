@@ -7,7 +7,7 @@ The `game_state` package provides comprehensive Pokemon Red game state reading a
 ## Core Architecture
 
 ### 🎮 **Game State Management**
-- **PokemonRedGameState**: Core data structure containing player info, party data, battle state, event flags
+- **PokemonRedGameState**: Unified data structure containing comprehensive game state with runtime metadata, tile data, and movement analysis - optimized for logging and AI agents
 - **PokemonRedMemoryReader**: Main interface for reading game state from PyBoy memory with type-safe access
 
 ### 🗺️ **Tile System (Enhanced)**
@@ -29,19 +29,15 @@ The `game_state` package provides comprehensive Pokemon Red game state reading a
 ```python
 reader = PokemonRedMemoryReader(pyboy)
 
-# Basic game state
-game_state = reader.parse_game_state(pyboy)
+# Parse complete game state with all tile data and metadata
+game_state = reader.parse_game_state(memory_view, step_counter=10, timestamp="2024-01-01T00:00:00")
 
-# Game state with enhanced tiles
-game_state, tile_matrix = reader.parse_game_state_with_tiles(memory_view)
-
-# Comprehensive data for AI agents
-comprehensive_data = reader.get_comprehensive_game_data(memory_view)
-
-# Specific position queries
-walkable_positions = reader.get_walkable_positions(memory_view)
-encounter_positions = reader.get_encounter_positions(memory_view)
-warp_positions = reader.get_warp_positions(memory_view)
+# Game state structure includes:
+# - Runtime metadata (step_counter, timestamp) 
+# - Core game data (player info, party, badges, battle state)
+# - Memory state (map_loading_status, current_tileset)
+# - All tiles data (walkable, blocked, encounter, warp, interactive)
+# - Tile type counts and movement analysis
 ```
 
 ### TileDataFactory
@@ -211,6 +207,9 @@ with open("game/init.state", "rb") as f:
 
 ## Recent Improvements
 
+✅ **Unified Game State**: Migrated ConsolidatedGameState functionality into PokemonRedGameState for single source of truth
+✅ **Enhanced Data Structures**: PokemonHp, TilePosition, TileWithDistance, DirectionsAvailable dataclasses for type safety
+✅ **Optimized Logging**: Game state optimized for MLFlow logging without event_flags
 ✅ **Factory Pattern**: TileDataFactory eliminates code duplication
 ✅ **Consolidated Detection**: TilePropertyDetector organizes all detection logic  
 ✅ **Enhanced Testing**: Comprehensive test coverage with mocking

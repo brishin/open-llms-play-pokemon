@@ -163,7 +163,7 @@ class PokemonRedDSPyPlayer:
                 memory_view = self.emulator.pyboy.memory
 
                 # Get all data in one optimized call
-                consolidated_state = self.memory_reader.get_consolidated_game_state(
+                consolidated_state = self.memory_reader.parse_game_state(
                     memory_view,
                     step_counter=step_counter,
                     timestamp=datetime.now().isoformat(),
@@ -196,11 +196,9 @@ class PokemonRedDSPyPlayer:
             self.emulator.load_state("init.state")
 
             while self.current_step < self.max_steps:
-                # Get all game data using unified consolidated method
+                # Get all game data using unified method
                 memory_view = self.emulator.pyboy.memory
-                consolidated_state = self.memory_reader.get_consolidated_game_state(
-                    memory_view
-                )
+                consolidated_state = self.memory_reader.parse_game_state(memory_view)
 
                 screen_base64 = self.emulator.get_screen_base64()
 

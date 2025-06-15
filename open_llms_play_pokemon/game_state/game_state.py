@@ -5,50 +5,87 @@ This module defines the data structures for representing Pokemon Red game states
 and evaluation examples.
 """
 
-from dataclasses import asdict, dataclass, field
-from typing import Any
+from dataclasses import asdict, dataclass
+
+
+@dataclass(slots=True, frozen=True)
+class TilePosition:
+    """Represents a tile position with coordinates."""
+
+    x: int
+    y: int
+
+
+@dataclass(slots=True, frozen=True)
+class TileWithDistance:
+    """Represents a tile position with distance from player."""
+
+    x: int
+    y: int
+    distance: int
+
+
+@dataclass(slots=True, frozen=True)
+class PokemonHp:
+    """Represents Pokemon HP with current and max values."""
+
+    current: int
+    max: int
+
+
+@dataclass(slots=True, frozen=True)
+class DirectionsAvailable:
+    """Represents available movement directions."""
+
+    north: bool
+    south: bool
+    east: bool
+    west: bool
 
 
 @dataclass(slots=True, frozen=True)
 class PokemonRedGameState:
-    """Represents the current state of Pokemon Red game"""
+    """Optimized state for logging - excludes event_flags for efficiency."""
 
+    # Runtime metadata
+    step_counter: int
+    timestamp: str
+
+    # Core game state
     player_name: str
     current_map: int
     player_x: int
     player_y: int
-
-    # Party Information
     party_count: int
     party_pokemon_levels: list[int]
-    party_pokemon_hp: list[tuple]  # [(current_hp, max_hp), ...]
-
+    party_pokemon_hp: list[PokemonHp]
     badges_obtained: int
-    badges_binary: int  # Binary representation of badges
-    event_flags: list[int] = field(repr=False)  # Event flags as list of bits (0 or 1)
-
     is_in_battle: bool
-    player_mon_hp: tuple | None = None  # (current, max)
-    enemy_mon_hp: tuple | None = None  # (current, max)
+    player_mon_hp: PokemonHp | None
+    enemy_mon_hp: PokemonHp | None
 
-    def to_dict(self) -> dict[str, Any]:
+    # Memory state
+    map_loading_status: int
+    current_tileset: int
+
+    # All tiles data (no radius filtering)
+    walkable_tiles: list[TileWithDistance]
+    blocked_tiles: list[TileWithDistance]
+    encounter_tiles: list[TilePosition]
+    warp_tiles: list[TilePosition]
+    interactive_tiles: list[TilePosition]
+
+    # Tile type counts (all tiles on screen)
+    tile_type_counts: dict[str, int]
+
+    # Movement options (immediate neighbors only)
+    directions_available: DirectionsAvailable
+
+    def to_dict(self) -> dict:
         """
-        Convert to dictionary, always excluding event_flags for serialization.
+        Convert to dictionary for JSON serialization.
 
         Returns:
-            Dictionary representation of game state without event_flags
+            Dictionary representation suitable for MLFlow logging
         """
-        data = asdict(self)
-        data.pop("event_flags", None)  # Remove event_flags if present
-        return data
-
-
-@dataclass(slots=True, frozen=True)
-class PokemonRedExample:
-    """Represents an example for Pokemon Red evaluation."""
-
-    initial_state: PokemonRedGameState
-    final_state: PokemonRedGameState
-    actions_taken: list[str]
-    time_elapsed: float
-    success_criteria: dict[str, Any]
+        return asdict(self)
