@@ -28,7 +28,9 @@ def analyze_screen(memory_view: PyBoyMemoryView) -> list[TileData]:
     # Check if map is stable before analysis
     try:
         loading_status = memory_view[MemoryAddresses.map_loading_status]
-        if loading_status != 0:  # Map is transitioning
+        # Allow common stable values: 0 (classic stable) and 16 (observed in init.state)
+        # Values like 1-3 might indicate transitioning states
+        if loading_status not in [0, 16]:  # Map might be transitioning
             return []
     except Exception:
         # If we can't read loading status, assume map is stable for tests
