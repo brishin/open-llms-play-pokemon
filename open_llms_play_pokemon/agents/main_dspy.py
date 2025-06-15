@@ -234,7 +234,7 @@ class PokemonRedDSPyPlayer:
     def __enter__(self):
         return self
 
-    def __exit__(self, _exc_type, _exc_val, _exc_tb):
+    def __exit__(self, _exc_type, _exc_val, _exc_tb):  # noqa: ARG002
         self.cleanup()
 
 
