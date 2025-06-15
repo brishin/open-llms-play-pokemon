@@ -63,6 +63,19 @@ The `/game/` directory contains various saved states representing different prog
   - Sort by: `--sort-by start_time|end_time|status` with `--order asc|desc`
   - Shows run details: status, duration, artifact count, key metrics
 
+### Verification Process for main_dspy.py Changes
+
+When making changes to the DSPy implementation or game state system, follow this verification process:
+
+1. **Run the DSPy Player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 10 --headless`
+2. **Check Latest Runs**: `python mlflow/get_runs.py --limit 1 --status FINISHED`
+3. **Verify Artifacts**: Ensure proper artifact count and file sizes are maintained
+4. **Validate Data Structure**: Download and inspect game state JSON files to verify:
+   - Dataclass structures are properly serialized
+   - Key fields like `directions_available` have expected values
+   - File sizes match expected data richness (~15-25KB for comprehensive data)
+   - No runtime errors or data corruption
+
 ### DSPy Implementation
 
 The DSPy version (`agents/main_dspy.py`) provides a more structured approach with:
