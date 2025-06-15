@@ -15,6 +15,7 @@ from mlflow.entities import SpanType
 from ..emulation.action_parser import ActionParser, ParsedAction
 from ..emulation.game_emulator import GameEmulator
 from ..game_state.memory_reader import PokemonRedMemoryReader
+from .re_act import ReAct
 
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"), override=True)
 
@@ -44,7 +45,7 @@ class PokemonRedDSPyAgent(dspy.Module):
     ):
         super().__init__()
         self.on_buttons_pressed = on_buttons_pressed
-        self.react_agent = dspy.ReAct(
+        self.react_agent = ReAct(
             ReActAgentSignature,
             tools=[self.press_buttons],
             max_iters=20,
@@ -163,12 +164,8 @@ class PokemonRedDSPyPlayer:
 
                 # Get all data in one optimized call
                 consolidated_state = self.memory_reader.get_consolidated_game_state(
-                    memory_view
+                    memory_view, step_counter=step_counter, timestamp=datetime.now().isoformat()
                 )
-
-                # Set runtime fields
-                consolidated_state.step_counter = step_counter
-                consolidated_state.timestamp = datetime.now().isoformat()
 
                 # Convert to dict (automatically excludes event_flags)
                 game_data = consolidated_state.to_dict()

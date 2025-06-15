@@ -117,14 +117,20 @@ def get_runs(
             except Exception:
                 pass
 
+            # Get artifact information
+            artifacts = client.list_artifacts(run.info.run_id)
+            artifact_count = len(artifacts)
+
             run_dict = {
                 "run_id": run.info.run_id[:8] + "...",  # Shortened for display
+                "full_run_id": run.info.run_id,  # Keep full ID for diagnosis
                 "experiment_name": exp_name,
                 "status": run.info.status,
                 "start_time": _format_timestamp(run.info.start_time),
                 "end_time": _format_timestamp(run.info.end_time),
                 "duration": _calculate_duration(run.info.start_time, run.info.end_time),
-                "artifact_count": len(client.list_artifacts(run.info.run_id)),
+                "artifact_count": artifact_count,
+                "artifacts": artifacts,
             }
 
             # Add key metrics if available
@@ -139,13 +145,8 @@ def get_runs(
 
             run_data.append(run_dict)
 
-        # Output in requested format
-        if output_format == "table":
-            _print_table(run_data)
-        elif output_format == "json":
-            _print_json(run_data)
-        elif output_format == "csv":
-            _print_csv(run_data)
+        # Always show artifact diagnosis by default
+        _print_artifact_diagnosis(run_data, client)
 
     except Exception as e:
         click.echo(f"Error fetching runs: {e}", err=True)
@@ -228,6 +229,56 @@ def _print_csv(data: list[dict[str, Any]]) -> None:
     writer = csv.DictWriter(sys.stdout, fieldnames=data[0].keys())
     writer.writeheader()
     writer.writerows(data)
+
+
+def _print_artifact_diagnosis(data: list[dict[str, Any]], client) -> None:
+    """Print detailed artifact diagnosis for each run."""
+    for run in data:
+        click.echo(f"\n{'=' * 80}")
+        click.echo(f"RUN ID: {run['full_run_id']}")
+        click.echo(
+            f"Status: {run['status']} | Duration: {run['duration']} | Artifacts: {run['artifact_count']}"
+        )
+        click.echo(f"Start: {run['start_time']} | End: {run['end_time']}")
+        click.echo(f"Metrics: {run['key_metrics']}")
+
+        if run["artifact_count"] > 0:
+            click.echo(f"\nARTIFACTS ({run['artifact_count']}):")
+            artifacts = run["artifacts"]
+            for i, artifact in enumerate(artifacts, 1):
+                artifact_info = f"  {i:2d}. {artifact.path}"
+                if artifact.is_dir:
+                    artifact_info += " (directory)"
+                else:
+                    artifact_info += f" ({artifact.file_size} bytes)"
+                click.echo(artifact_info)
+
+                # Show file contents for small text files
+                if not artifact.is_dir and artifact.file_size < 1000:
+                    try:
+                        if artifact.path.endswith((".txt", ".json", ".log", ".md")):
+                            content = client.download_artifacts(
+                                run["full_run_id"], artifact.path
+                            )
+                            with open(content) as f:
+                                preview = f.read()[:200]
+                                if len(preview) == 200:
+                                    preview += "..."
+                                click.echo(f"     Preview: {preview}")
+                    except Exception:
+                        pass
+        else:
+            click.echo("\nNo artifacts found for this run.")
+
+        # Show tags if any
+        try:
+            run_details = client.get_run(run["full_run_id"])
+            if run_details.data.tags:
+                click.echo("\nTAGS:")
+                for key, value in run_details.data.tags.items():
+                    click.echo(f"  {key}: {value}")
+        except Exception:
+            pass
 
 
 if __name__ == "__main__":

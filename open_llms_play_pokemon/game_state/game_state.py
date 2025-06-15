@@ -9,7 +9,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Any
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class PokemonRedGameState:
     """Represents the current state of Pokemon Red game"""
 
@@ -43,7 +43,7 @@ class PokemonRedGameState:
         return data
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class PokemonRedExample:
     """Represents an example for Pokemon Red evaluation."""
 

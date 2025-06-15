@@ -8,7 +8,7 @@ game state in a format optimized for JSON serialization and logging.
 from dataclasses import asdict, dataclass
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class ConsolidatedGameState:
     """Optimized state for logging - excludes event_flags for efficiency."""
 

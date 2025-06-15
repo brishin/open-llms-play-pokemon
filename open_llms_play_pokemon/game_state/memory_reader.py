@@ -136,7 +136,7 @@ class PokemonRedMemoryReader:
         }
 
     def get_consolidated_game_state(
-        self, memory_view: PyBoyMemoryView
+        self, memory_view: PyBoyMemoryView, step_counter: int = 0, timestamp: str = ""
     ) -> ConsolidatedGameState:
         """
         Get all game data in a single, optimized call.
@@ -184,9 +184,9 @@ class PokemonRedMemoryReader:
         }
 
         return ConsolidatedGameState(
-            # Runtime fields (to be set by caller)
-            step_counter=0,
-            timestamp="",
+            # Runtime fields
+            step_counter=step_counter,
+            timestamp=timestamp,
             # Game state fields (excluding event_flags and badges_binary)
             **filtered_game_data,
             # Memory state

@@ -40,7 +40,7 @@ class TileType(Enum):
     ITEM = "item"
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class TileData:
     """
     Enhanced tile data structure containing comprehensive information about a tile.
@@ -119,7 +119,7 @@ class TileData:
         return cls(**data)
 
 
-@dataclass
+@dataclass(slots=True, frozen=True)
 class TileMatrix:
     """
     Complete tile data matrix for a game area.
