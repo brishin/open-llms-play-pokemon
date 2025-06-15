@@ -164,7 +164,9 @@ class PokemonRedDSPyPlayer:
 
                 # Get all data in one optimized call
                 consolidated_state = self.memory_reader.get_consolidated_game_state(
-                    memory_view, step_counter=step_counter, timestamp=datetime.now().isoformat()
+                    memory_view,
+                    step_counter=step_counter,
+                    timestamp=datetime.now().isoformat(),
                 )
 
                 # Convert to dict (automatically excludes event_flags)

@@ -13,6 +13,12 @@ from open_llms_play_pokemon.game_state import (  # noqa: E402
     PokemonRedGameState,
     PokemonRedMemoryReader,
 )
+from open_llms_play_pokemon.game_state.consolidated_state import (  # noqa: E402
+    DirectionsAvailable,
+    PokemonHp,
+    TilePosition,
+    TileWithDistance,
+)
 from open_llms_play_pokemon.game_state.data.memory_addresses import (  # noqa: E402
     MemoryAddresses,
 )
@@ -59,25 +65,32 @@ def test_consolidated_game_state_structure():
         player_y=8,
         party_count=1,
         party_pokemon_levels=[15],
-        party_pokemon_hp=[(60, 80)],
+        party_pokemon_hp=[PokemonHp(current=60, max=80)],
         badges_obtained=2,
         is_in_battle=False,
         player_mon_hp=None,
         enemy_mon_hp=None,
         map_loading_status=0,
         current_tileset=2,
-        walkable_tiles=[(5, 5, 2), (6, 6, 3), (7, 7, 4)],
-        blocked_tiles=[(0, 0, 15), (1, 1, 14)],
-        encounter_tiles=[(8, 8), (9, 9)],
-        warp_tiles=[(10, 10)],
-        interactive_tiles=[(11, 11)],
+        walkable_tiles=[
+            TileWithDistance(x=5, y=5, distance=2),
+            TileWithDistance(x=6, y=6, distance=3),
+            TileWithDistance(x=7, y=7, distance=4),
+        ],
+        blocked_tiles=[
+            TileWithDistance(x=0, y=0, distance=15),
+            TileWithDistance(x=1, y=1, distance=14),
+        ],
+        encounter_tiles=[TilePosition(x=8, y=8), TilePosition(x=9, y=9)],
+        warp_tiles=[TilePosition(x=10, y=10)],
+        interactive_tiles=[TilePosition(x=11, y=11)],
         tile_type_counts={"walkable": 3, "blocked": 2, "grass": 2},
-        directions_available={
-            "north": True,
-            "south": False,
-            "east": True,
-            "west": True,
-        },
+        directions_available=DirectionsAvailable(
+            north=True,
+            south=False,
+            east=True,
+            west=True,
+        ),
     )
 
     # Test serialization
@@ -180,16 +193,20 @@ def test_memory_reader_utility_methods():
         Mock(x=9, y=10),
     ]
 
-    coords = reader._extract_tile_coordinates(mock_tiles)
-    assert coords == [(5, 6), (7, 8), (9, 10)]
+    positions = reader._extract_tile_positions(mock_tiles)
+    expected_positions = [
+        TilePosition(x=5, y=6),
+        TilePosition(x=7, y=8),
+        TilePosition(x=9, y=10),
+    ]
+    assert positions == expected_positions
 
-    # Test coordinate extraction with distance
-    coords_with_distance = reader._extract_tile_coordinates_with_distance(mock_tiles)
-    assert len(coords_with_distance) == 3
-    assert len(coords_with_distance[0]) == 3  # x, y, distance
-    assert coords_with_distance[0][0] == 5  # x
-    assert coords_with_distance[0][1] == 6  # y
-    assert isinstance(coords_with_distance[0][2], int)  # distance
+    # Test position extraction with distance
+    tiles_with_distance = reader._extract_tiles_with_distance(mock_tiles)
+    assert len(tiles_with_distance) == 3
+    assert tiles_with_distance[0].x == 5
+    assert tiles_with_distance[0].y == 6
+    assert isinstance(tiles_with_distance[0].distance, int)
 
     # Test tile type counting
     mock_tiles_for_count = [

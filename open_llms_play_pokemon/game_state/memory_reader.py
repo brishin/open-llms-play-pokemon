@@ -3,7 +3,13 @@ from collections.abc import Sequence
 from pyboy import PyBoy, PyBoyMemoryView
 from pyboy.plugins.game_wrapper_pokemon_gen1 import GameWrapperPokemonGen1
 
-from .consolidated_state import ConsolidatedGameState
+from .consolidated_state import (
+    ConsolidatedGameState,
+    DirectionsAvailable,
+    PokemonHp,
+    TilePosition,
+    TileWithDistance,
+)
 from .data.memory_addresses import MemoryAddresses
 from .game_state import PokemonRedGameState
 from .screen_analyzer import (
@@ -116,17 +122,17 @@ class PokemonRedMemoryReader:
         all_tiles = analyze_screen(memory_view)
 
         return {
-            "walkable_tiles": self._extract_tile_coordinates_with_distance(
+            "walkable_tiles": self._extract_tiles_with_distance(
                 tile_categories["walkable"]
             ),
-            "blocked_tiles": self._extract_tile_coordinates_with_distance(
+            "blocked_tiles": self._extract_tiles_with_distance(
                 tile_categories["blocked"]
             ),
-            "encounter_tiles": self._extract_tile_coordinates(
+            "encounter_tiles": self._extract_tile_positions(
                 tile_categories["encounters"]
             ),
-            "warp_tiles": self._extract_tile_coordinates(tile_categories["warps"]),
-            "interactive_tiles": self._extract_tile_coordinates(
+            "warp_tiles": self._extract_tile_positions(tile_categories["warps"]),
+            "interactive_tiles": self._extract_tile_positions(
                 tile_categories["interactive"]
             ),
             "tile_type_counts": self._count_tile_types(all_tiles),
@@ -162,7 +168,7 @@ class PokemonRedMemoryReader:
             map_loading_status = 0
             current_tileset = 0
 
-        # Only include fields that exist in ConsolidatedGameState
+        # Only include fields that exist in ConsolidatedGameState and convert HP data
         game_data = game_state.to_dict()
         filtered_game_data = {
             k: v
@@ -175,13 +181,32 @@ class PokemonRedMemoryReader:
                 "player_y",
                 "party_count",
                 "party_pokemon_levels",
-                "party_pokemon_hp",
                 "badges_obtained",
                 "is_in_battle",
-                "player_mon_hp",
-                "enemy_mon_hp",
             ]
         }
+
+        # Convert HP tuples to PokemonHp dataclasses
+        filtered_game_data["party_pokemon_hp"] = [
+            PokemonHp(current=current, max=max_hp)
+            for current, max_hp in game_state.party_pokemon_hp
+        ]
+
+        # Convert battle HP tuples to PokemonHp dataclasses
+        filtered_game_data["player_mon_hp"] = (
+            PokemonHp(
+                current=game_state.player_mon_hp[0], max=game_state.player_mon_hp[1]
+            )
+            if game_state.player_mon_hp
+            else None
+        )
+        filtered_game_data["enemy_mon_hp"] = (
+            PokemonHp(
+                current=game_state.enemy_mon_hp[0], max=game_state.enemy_mon_hp[1]
+            )
+            if game_state.enemy_mon_hp
+            else None
+        )
 
         return ConsolidatedGameState(
             # Runtime fields
@@ -198,7 +223,7 @@ class PokemonRedMemoryReader:
 
     def _check_immediate_directions(
         self, all_tiles: list, player_center_x: int, player_center_y: int
-    ) -> dict[str, bool]:
+    ) -> DirectionsAvailable:
         """Check walkability of immediate neighboring tiles."""
         directions = {
             "north": (0, -1),
@@ -207,7 +232,7 @@ class PokemonRedMemoryReader:
             "west": (-1, 0),
         }
 
-        directions_available = {}
+        directions_dict = {}
         for direction, (dx, dy) in directions.items():
             check_x = player_center_x + dx
             check_y = player_center_y + dy
@@ -215,9 +240,14 @@ class PokemonRedMemoryReader:
             tile = next(
                 (t for t in all_tiles if t.x == check_x and t.y == check_y), None
             )
-            directions_available[direction] = bool(tile and tile.is_walkable)
+            directions_dict[direction] = bool(tile and tile.is_walkable)
 
-        return directions_available
+        return DirectionsAvailable(
+            north=directions_dict["north"],
+            south=directions_dict["south"],
+            east=directions_dict["east"],
+            west=directions_dict["west"],
+        )
 
     @staticmethod
     def _calculate_distance(tile_x: int, tile_y: int) -> int:
@@ -227,17 +257,19 @@ class PokemonRedMemoryReader:
         )
 
     @staticmethod
-    def _extract_tile_coordinates(tiles: list) -> list[tuple[int, int]]:
-        """Extract (x, y) coordinates from tiles."""
-        return [(t.x, t.y) for t in tiles]
+    def _extract_tile_positions(tiles: list) -> list[TilePosition]:
+        """Extract tile positions as dataclasses."""
+        return [TilePosition(x=t.x, y=t.y) for t in tiles]
 
     @staticmethod
-    def _extract_tile_coordinates_with_distance(
-        tiles: list,
-    ) -> list[tuple[int, int, int]]:
-        """Extract (x, y, distance) coordinates from tiles."""
+    def _extract_tiles_with_distance(tiles: list) -> list[TileWithDistance]:
+        """Extract tile positions with distance as dataclasses."""
         return [
-            (t.x, t.y, PokemonRedMemoryReader._calculate_distance(t.x, t.y))
+            TileWithDistance(
+                x=t.x,
+                y=t.y,
+                distance=PokemonRedMemoryReader._calculate_distance(t.x, t.y),
+            )
             for t in tiles
         ]
 
