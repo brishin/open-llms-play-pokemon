@@ -1,7 +1,7 @@
 import TracesNav from '~/components/ExperimentsNav';
 import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/MLFlowClient';
-import { BoxContainer } from '~/components/BoxContainer';
+import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
 import { ScreenshotGallery } from '~/components/ScreenshotGallery';
 import { GameDataViewer } from '~/components/GameDataViewer';
@@ -32,9 +32,8 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
       <TracesNav runs={loaderData.runs} />
       <div className="flex flex-col gap-[0.25lh] grow overflow-y-auto">
         {/* Basic run info */}
-        <BoxContainer shear="top" className="px-[1ch] py-[0.5lh] flex-shrink-0">
-          <span variant-="background">Run Details</span>
-          <div className="mt-[0.5lh] grid grid-cols-2 gap-[4ch] text-sm">
+        <BoxContainer shear="top" title="Run Details">
+          <BoxContainerContent className="grid grid-cols-2 gap-[4ch] text-sm">
             <div>
               <div>
                 <strong>Name:</strong> {run.info.run_name}
@@ -56,11 +55,10 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
                 </div>
               )}
               <div>
-                <strong>Run ID:</strong>{' '}
-                <span className="font-mono text-xs">{run.info.run_id}</span>
+                <strong>Run ID:</strong> <span>{run.info.run_id}</span>
               </div>
             </div>
-          </div>
+          </BoxContainerContent>
         </BoxContainer>
 
         {/* Metrics display */}

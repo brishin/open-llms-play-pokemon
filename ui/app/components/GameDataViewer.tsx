@@ -59,15 +59,14 @@ export function GameDataViewer({ artifacts, runId }: GameDataViewerProps) {
   }, [gameStateFiles, selectedArtifactPath]);
 
   return (
-    <BoxContainer shear="top" className="p-4">
-      <span variant-="background">Game State Data ({gameStateFiles.length})</span>
+    <BoxContainer shear="top" title={`Game State Data (${gameStateFiles.length})`} className="px-[1ch] pb-[1ch]">
 
       {gameStateFiles.length === 0 ? (
-        <div className="mt-[1lh] text-sm text-gray-500">
+        <div className="mt-[0.5lh] text-sm text-gray-500">
           No game state data found for this run.
         </div>
       ) : (
-        <div className="mt-[1lh] space-y-[1lh]">
+        <div className="mt-[0.5lh] space-y-[1lh]">
           {/* File selector */}
           <div>
             <label htmlFor="game-state-selector" className="block text-sm font-medium mb-[0.5lh]">Select Game State:</label>

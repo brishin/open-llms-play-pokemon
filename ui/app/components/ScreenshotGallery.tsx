@@ -27,16 +27,15 @@ export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) 
   };
 
   return (
-    <BoxContainer shear="top" className="p-4">
-      <span variant-="background">Screenshots ({screenshots.length})</span>
+    <BoxContainer shear="top" title={`Screenshots (${screenshots.length})`} className="px-[1ch] pb-[1ch]">
       
       {screenshots.length === 0 ? (
-        <div className="mt-[1lh] text-sm text-gray-500">
+        <div className="mt-[0.5lh] text-sm text-gray-500">
           No screenshots found for this run.
         </div>
       ) : (
         <>
-          <div className="mt-[1lh] grid grid-cols-4 gap-[0.5ch] max-h-[24lh] overflow-y-auto">
+          <div className="mt-[0.5lh] grid grid-cols-4 gap-[0.5ch] max-h-[24lh] overflow-y-auto">
             {screenshots.map((screenshot, index) => {
               const stepMatch = screenshot.path.match(/screenshot_(\d+)\.png/);
               const stepNumber = stepMatch ? stepMatch[1] : index + 1;

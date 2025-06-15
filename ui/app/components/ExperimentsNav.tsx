@@ -1,11 +1,12 @@
 import { NavLink } from 'react-router';
 import type { MLFlowRun } from '~/MLFlowClient';
 import { BoxContainer } from './BoxContainer';
+import dayjs from '~/dayjs';
 
 export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
   const getLatestMetric = (run: MLFlowRun, metricKey: string) => {
     const metrics = run.data.metrics || [];
-    const metric = metrics.find(m => m.key === metricKey);
+    const metric = metrics.find((m) => m.key === metricKey);
     return metric?.value;
   };
 
@@ -17,10 +18,14 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
 
   const getStatusColor = (status: string) => {
     switch (status) {
-      case 'FINISHED': return 'text-green-600';
-      case 'FAILED': return 'text-red-600';
-      case 'RUNNING': return 'text-blue-600';
-      default: return 'text-gray-600';
+      case 'FINISHED':
+        return 'text-green-600';
+      case 'FAILED':
+        return 'text-red-600';
+      case 'RUNNING':
+        return 'text-blue-600';
+      default:
+        return 'text-gray-600';
     }
   };
 
@@ -33,42 +38,34 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
             {runs.map((run) => {
               const badges = getLatestMetric(run, 'badges');
               const partyCount = getLatestMetric(run, 'party_count');
-              const isInBattle = getLatestMetric(run, 'is_in_battle');
-              
+
               return (
                 <li key={run.info.run_id} className="border-b border-gray-200 pb-[0.5lh]">
-                  <NavLink 
+                  <NavLink
                     to={`/run/${run.info.run_id}`}
-                    className={({ isActive }) => 
+                    className={({ isActive }) =>
                       `block hover:bg-gray-100 p-[0.5ch] rounded transition-colors ${
-                        isActive ? 'bg-blue-100 border-l-[0.25ch] border-blue-500' : ''
+                        isActive ? 'bg-blue-100' : ''
                       }`
                     }
                   >
-                    <div className="font-medium text-sm truncate" title={run.info.run_name}>
+                    <div className="font-medium truncate" title={run.info.run_name}>
                       {run.info.run_name}
                     </div>
-                    <div className={`text-xs ${getStatusColor(run.info.status)}`}>
+                    <div className={`${getStatusColor(run.info.status)}`}>
                       {run.info.status}
                     </div>
-                    <div className="text-xs text-gray-500 mt-[0.25lh]">
-                      {getRunDuration(run)}
-                    </div>
+                    <div className="text-gray-500 mt-[0.25lh]">{getRunDuration(run)}</div>
                     {(badges !== undefined || partyCount !== undefined) && (
-                      <div className="text-xs text-gray-600 mt-[0.25lh] space-y-[0.125lh]">
-                        {badges !== undefined && (
-                          <div>🏆 {badges} badges</div>
-                        )}
-                        {partyCount !== undefined && (
-                          <div>👥 {partyCount} pokemon</div>
-                        )}
-                        {isInBattle && (
-                          <div>⚔️ In battle</div>
-                        )}
+                      <div className="text-gray-600 mt-[0.25lh] space-y-[0.125lh]">
+                        {badges !== undefined && <div>🏆 {badges} badges</div>}
+                        {partyCount !== undefined && <div>👥 {partyCount} pokemon</div>}
                       </div>
                     )}
-                    <div className="text-xs text-gray-400 mt-[0.25lh]">
-                      {new Date(run.info.start_time).toLocaleDateString()}
+                    <div className="text-gray-400 mt-[0.25lh]">
+                      {dayjs
+                        .duration(dayjs(run.info.end_time).diff(dayjs()))
+                        .humanize(true)}
                     </div>
                   </NavLink>
                 </li>

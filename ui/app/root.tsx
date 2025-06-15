@@ -21,11 +21,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Links />
       </head>
       <body className="px-[1ch]">
-        <BoxContainer as="nav" className="flex justify-between px-[2ch] py-[1lh]">
+        <BoxContainer as="nav" className="flex justify-between flex-row px-[2ch]">
           <p>Open LLMs Play Pokemon</p>
           <div className="flex gap-2">
             <a href="/" data-active="true">
-              <span>Experiments</span>
+              <span>Runs</span>
             </a>
           </div>
         </BoxContainer>
