@@ -10,6 +10,7 @@ dependencies = [
     "pillow>=11.2.1",
     "pyboy>=2.6.0",
     "dspy>=3.0.0b1",
+    "tabulate>=0.9.0",
 ]
 
 [dependency-groups]

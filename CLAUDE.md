@@ -15,6 +15,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Type check**: `uv run pyright`
 - **Deploy LLM server**: `modal deploy server/llm_server.py`
 - **Test LLM server**: `modal run server/llm_server.py::test`
+- **Get MLflow experiments**: `python mlflow/get_experiments.py` (fetch recent experiments with table output)
+- **Get MLflow runs**: `python mlflow/get_runs.py --limit 5 --status FINISHED` (fetch recent successful runs)
 
 ## Architecture Overview
 
@@ -46,6 +48,20 @@ The `/game/` directory contains various saved states representing different prog
 - Screen captures are base64-encoded and sent to vision model for action decisions
 - AI responses are parsed to extract button sequences in format: `buttons(sequence='button1 button2')`
 - Action parser handles validation, error recovery, and PyBoy integration
+
+### MLflow Integration
+
+- **MLflow Server**: Runs on `http://localhost:8080` by default for experiment tracking
+- **Experiment Management**: Use `python mlflow/get_experiments.py` to fetch and display recent experiments
+  - Supports multiple output formats: `--format table|json|csv`
+  - Configurable limits: `--limit N` (default: 3)
+  - Custom tracking URI: `--tracking-uri http://custom:port`
+  - Sorting options: `--sort-by creation_time|last_update_time|name`
+- **Run Management**: Use `python mlflow/get_runs.py` to fetch and display recent runs
+  - Filter by experiment: `--experiment-name "open-llms-play-pokemon"` or `--experiment-id ID`
+  - Filter by status: `--status FINISHED|FAILED|RUNNING`
+  - Sort by: `--sort-by start_time|end_time|status` with `--order asc|desc`
+  - Shows run details: status, duration, artifact count, key metrics
 
 ### DSPy Implementation
 

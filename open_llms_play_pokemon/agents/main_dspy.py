@@ -6,10 +6,11 @@ from typing import NamedTuple
 
 import click
 import dspy
-import mlflow
 from dotenv import load_dotenv
-from mlflow.entities import SpanType
 from PIL import Image
+
+import mlflow
+from mlflow.entities import SpanType
 
 from ..emulation.action_parser import ActionParser, ParsedAction
 from ..emulation.game_emulator import GameEmulator

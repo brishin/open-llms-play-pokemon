@@ -1288,6 +1288,7 @@ dependencies = [
     { name = "openai" },
     { name = "pillow" },
     { name = "pyboy" },
+    { name = "tabulate" },
 ]
 
 [package.dev-dependencies]
@@ -1306,6 +1307,7 @@ requires-dist = [
     { name = "openai", specifier = ">=1.82.0" },
     { name = "pillow", specifier = ">=11.2.1" },
     { name = "pyboy", specifier = ">=2.6.0" },
+    { name = "tabulate", specifier = ">=0.9.0" },
 ]
 
 [package.metadata.requires-dev]
@@ -2160,6 +2162,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/ed/21/82c2b51f901452642cb2ed69ab872ef5eacbf98dbd0b661d3673a76d79f5/synchronicity-0.9.12.tar.gz", hash = "sha256:977f3ed8f6e35de4d1a3f0aeee4937143ba8d913f531d33e8df7c539b2792fb8", size = 50441, upload_time = "2025-05-07T12:07:41.901Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ab/e3/730a67bee380f5638731cd563e8f5ad3a2d480ee788b767698e83eb2290f/synchronicity-0.9.12-py3-none-any.whl", hash = "sha256:b006f57bd216d55e578316096a11b6dc16016d6b48e2766bcffabe40c88f9793", size = 36820, upload_time = "2025-05-07T12:07:40.256Z" },
+]
+
+[[package]]
+name = "tabulate"
+version = "0.9.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ec/fe/802052aecb21e3797b8f7902564ab6ea0d60ff8ca23952079064155d1ae1/tabulate-0.9.0.tar.gz", hash = "sha256:0095b12bf5966de529c0feb1fa08671671b3368eec77d7ef7ab114be2c068b3c", size = 81090, upload_time = "2022-10-06T17:21:48.54Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/44/4a5f08c96eb108af5cb50b41f76142f0afa346dfa99d5296fe7202a11854/tabulate-0.9.0-py3-none-any.whl", hash = "sha256:024ca478df22e9340661486f85298cff5f6dcdba14f3813e8830015b9ed1948f", size = 35252, upload_time = "2022-10-06T17:21:44.262Z" },
 ]
 
 [[package]]
