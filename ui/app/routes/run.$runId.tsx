@@ -3,7 +3,7 @@ import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/MLFlowClient';
 import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
-import { ScreenshotGallery } from '~/components/ScreenshotGallery';
+import { ScreenshotSlider } from '~/components/ScreenshotSlider';
 import { GameDataViewer } from '~/components/GameDataViewer';
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -66,7 +66,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
 
         {/* Screenshots and game data in a grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.25lh] flex-grow">
-          <ScreenshotGallery artifacts={artifacts} runId={run.info.run_id} />
+          <ScreenshotSlider artifacts={artifacts} runId={run.info.run_id} />
           <GameDataViewer artifacts={artifacts} runId={run.info.run_id} />
         </div>
       </div>
