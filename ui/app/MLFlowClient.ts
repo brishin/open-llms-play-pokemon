@@ -45,6 +45,12 @@ export default class MLFlowClient {
     return result.files;
   }
 
+  async getArtifact(runId: string, artifactPath: string): Promise<unknown> {
+    const url = `${this.trackingUri}/get-artifact?path=${encodeURIComponent(artifactPath)}&run_uuid=${runId}`;
+    const response = await ky.get(url);
+    return response.json();
+  }
+
   async getTraces(options: {
     experimentIds: string[];
     orderBy?: string;
