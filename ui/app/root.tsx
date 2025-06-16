@@ -20,7 +20,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body className="px-[1ch]">
+      <body className="px-[1ch] flex flex-col">
         <BoxContainer as="nav" className="flex justify-between flex-row px-[2ch]">
           <p>Open LLMs Play Pokemon</p>
           <div className="flex gap-2">

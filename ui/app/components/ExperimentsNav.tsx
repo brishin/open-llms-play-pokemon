@@ -30,11 +30,15 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
   };
 
   return (
-    <BoxContainer as="nav" shear="top" className="min-w-[16ch] h-full px-[0.5ch]">
-      <span variant-="background">Runs ({runs.length})</span>
-      <div className="my-[1lh] px-[0.25ch]">
-        <div className="flex-col gap-[0.5lh] overflow-y-auto max-h-full">
-          <ul className="space-y-[0.5lh]">
+    <BoxContainer
+      as="nav"
+      shear="top"
+      className="min-w-[16ch] h-full flex flex-col"
+      title={`Runs (${runs.length})`}
+    >
+      <div className="my-[1lh] px-[1ch] flex-1 min-h-0">
+        <div className="overflow-y-auto gap-[1lh">
+          <ul>
             {runs.map((run) => {
               const badges = getLatestMetric(run, 'badges');
               const partyCount = getLatestMetric(run, 'party_count');
@@ -44,7 +48,7 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
                   <NavLink
                     to={`/run/${run.info.run_id}`}
                     className={({ isActive }) =>
-                      `block hover:bg-gray-100 p-[0.5ch] rounded transition-colors ${
+                      `block hover:bg-gray-100 p-[0.5ch] transition-colors ${
                         isActive ? 'bg-blue-100' : ''
                       }`
                     }

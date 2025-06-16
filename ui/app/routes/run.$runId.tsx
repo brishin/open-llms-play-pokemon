@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import TracesNav from '~/components/ExperimentsNav';
 import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/MLFlowClient';
@@ -26,14 +27,35 @@ export async function loader({ params }: Route.LoaderArgs) {
 
 export default function RunDetail({ loaderData }: Route.ComponentProps) {
   const { run, artifacts, traces } = loaderData;
+  const [currentSliderIndex, setCurrentSliderIndex] = useState(0);
+
+  // Extract screenshot step number from slider index
+  const screenshots = (artifacts as any[])
+    .filter(
+      (artifact) =>
+        artifact?.path?.startsWith('screenshot_') && artifact?.path?.endsWith('.png'),
+    )
+    .sort((a, b) => {
+      const stepA = Number.parseInt(a?.path?.match(/screenshot_(\d+)\.png/)?.[1] || '0');
+      const stepB = Number.parseInt(b?.path?.match(/screenshot_(\d+)\.png/)?.[1] || '0');
+      return stepA - stepB;
+    });
+
+  const getCurrentStepNumber = () => {
+    if (screenshots.length === 0) return 0;
+    const screenshot = screenshots[currentSliderIndex];
+    if (!screenshot?.path) return 0;
+    const stepMatch = screenshot.path.match(/screenshot_(\d+)\.png/);
+    return stepMatch ? Number.parseInt(stepMatch[1]) : currentSliderIndex + 1;
+  };
 
   return (
-    <div className="flex flex-row gap-1 h-full">
+    <div className="flex flex-row gap-1">
       <TracesNav runs={loaderData.runs} />
       <div className="flex flex-col gap-[0.25lh] grow overflow-y-auto">
         {/* Basic run info */}
         <BoxContainer shear="top" title="Run Details">
-          <BoxContainerContent className="grid grid-cols-2 gap-[4ch] text-sm">
+          <BoxContainerContent className="grid grid-cols-2 gap-[4ch]">
             <div>
               <div>
                 <strong>Name:</strong> {run.info.run_name}
@@ -66,8 +88,17 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
 
         {/* Screenshots and game data in a grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.25lh] flex-grow">
-          <ScreenshotSlider artifacts={artifacts} runId={run.info.run_id} />
-          <GameDataViewer artifacts={artifacts} runId={run.info.run_id} />
+          <ScreenshotSlider
+            artifacts={artifacts}
+            runId={run.info.run_id}
+            currentIndex={currentSliderIndex}
+            setCurrentIndex={setCurrentSliderIndex}
+          />
+          <GameDataViewer
+            artifacts={artifacts}
+            runId={run.info.run_id}
+            currentSliderStep={getCurrentStepNumber()}
+          />
         </div>
       </div>
     </div>

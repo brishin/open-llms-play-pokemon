@@ -27,8 +27,8 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
       <BoxContainerContent>
         <div className="mt-[0.5lh] grid grid-cols-2 gap-[4ch]">
           <div className="space-y-[0.5lh]">
-            <h3 className="font-semibold text-sm">Progress Metrics</h3>
-            <div className="space-y-[0.25lh] text-sm">
+            <h1 className="font-semibold">Progress Metrics</h1>
+            <div className="space-y-[0.25lh]">
               <div className="flex justify-between">
                 <span>Badges Obtained:</span>
                 <span className="font-mono">{latestMetrics.badges?.value ?? 0}</span>
@@ -51,8 +51,8 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
           </div>
 
           <div className="space-y-[0.5lh]">
-            <h3 className="font-semibold text-sm">Run Configuration</h3>
-            <div className="space-y-[0.25lh] text-sm">
+            <h1 className="font-semibold">Run Configuration</h1>
+            <div className="space-y-[0.25lh]">
               <div className="flex justify-between">
                 <span>Max Steps:</span>
                 <span className="font-mono">{maxSteps ?? 'Unknown'}</span>
@@ -77,8 +77,8 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
 
         {metrics.length > 0 && (
           <div className="mt-[1lh]">
-            <h3 className="font-semibold text-sm mb-[0.5lh]">Metric History</h3>
-            <div className="max-h-[8lh] overflow-y-auto text-xs">
+            <h1 className="font-semibold mb-[0.5lh]">Metric History</h1>
+            <div className="max-h-[8lh] overflow-y-auto">
               <table className="w-full">
                 <thead>
                   <tr className="border-b">

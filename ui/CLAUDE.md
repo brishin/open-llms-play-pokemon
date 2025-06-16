@@ -62,21 +62,6 @@ The UI connects to the MLflow tracking server that logs Pokemon AI agent runs. I
 
 The UI displays comprehensive data logged by the DSPy Pokemon agent (`main_dspy.py`):
 
-### Logged Artifacts
-- **Screenshots**: `screenshot_{step}.png` files logged every step with MLflow
-- **Game State Data**: `game_state_step_{step}.json` files logged every 5 steps containing:
-  - Basic game info (badges, party count, current map, battle status)
-  - Player position and available movement directions
-  - Detailed Pokemon party data (species, level, HP, status)
-  - Inventory items and quantities
-  - Raw memory data from the game emulator
-
-### Metrics Tracked
-- `badges`: Number of gym badges obtained
-- `party_count`: Number of Pokemon in party
-- `current_map`: Current map ID in the game
-- `is_in_battle`: Boolean indicating if player is in battle
-
 ### UI Components for Data Visualization
 - **MetricsDisplay**: Shows progress metrics and history table
 - **ScreenshotGallery**: Grid view of screenshots with modal enlargement
@@ -87,6 +72,7 @@ The UI displays comprehensive data logged by the DSPy Pokemon agent (`main_dspy.
 
 ### Design
 - The UI is a terminal UI (TUI) rendered to the web.
+- Use font weights instead of font sizes to maintain the monospace console like text layout.
 
 ### CSS Units
 - Use `ch` units for x-axis sizing (widths, horizontal padding/gaps)

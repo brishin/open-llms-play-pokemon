@@ -1,14 +1,19 @@
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { BoxContainer } from './BoxContainer';
 
 interface ScreenshotSliderProps {
   artifacts: any[];
   runId: string;
+  currentIndex: number;
+  setCurrentIndex: (index: number) => void;
 }
 
-export function ScreenshotSlider({ artifacts, runId }: ScreenshotSliderProps) {
-  const [currentIndex, setCurrentIndex] = useState(0);
-
+export function ScreenshotSlider({
+  artifacts,
+  runId,
+  currentIndex,
+  setCurrentIndex,
+}: ScreenshotSliderProps) {
   // Filter for screenshot artifacts and sort by step number
   const screenshots = artifacts
     .filter(
@@ -42,11 +47,11 @@ export function ScreenshotSlider({ artifacts, runId }: ScreenshotSliderProps) {
   };
 
   const handlePrevious = () => {
-    setCurrentIndex((prev) => Math.max(0, prev - 1));
+    setCurrentIndex(Math.max(0, currentIndex - 1));
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => Math.min(screenshots.length - 1, prev + 1));
+    setCurrentIndex(Math.min(screenshots.length - 1, currentIndex + 1));
   };
 
   // Keyboard navigation

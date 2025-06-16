@@ -8,13 +8,12 @@ interface ScreenshotGalleryProps {
 
 export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) {
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  
+
   // Filter for screenshot artifacts and sort by step number
   const screenshots = artifacts
-    .filter(artifact => 
-      artifact.path && 
-      artifact.path.startsWith('screenshot_') && 
-      artifact.path.endsWith('.png')
+    .filter(
+      (artifact) =>
+        artifact?.path?.startsWith('screenshot_') && artifact?.path?.endsWith('.png'),
     )
     .sort((a, b) => {
       const stepA = Number.parseInt(a.path.match(/screenshot_(\d+)\.png/)?.[1] || '0');
@@ -27,8 +26,11 @@ export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) 
   };
 
   return (
-    <BoxContainer shear="top" title={`Screenshots (${screenshots.length})`} className="px-[1ch] pb-[1ch]">
-      
+    <BoxContainer
+      shear="top"
+      title={`Screenshots (${screenshots.length})`}
+      className="px-[1ch] pb-[1ch]"
+    >
       {screenshots.length === 0 ? (
         <div className="mt-[0.5lh] text-sm text-gray-500">
           No screenshots found for this run.
@@ -40,9 +42,9 @@ export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) 
               const stepMatch = screenshot.path.match(/screenshot_(\d+)\.png/);
               const stepNumber = stepMatch ? stepMatch[1] : index + 1;
               const imageUrl = getArtifactUrl(screenshot.path);
-              
+
               return (
-                <div 
+                <div
                   key={screenshot.path}
                   className="relative cursor-pointer hover:opacity-80 transition-opacity"
                   onClick={() => setSelectedImage(imageUrl)}
@@ -53,17 +55,17 @@ export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) 
                     className="w-full h-auto border border-gray-300 rounded"
                     loading="lazy"
                   />
-                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white text-xs px-[0.25ch] py-[0.125lh] rounded-b">
+                  <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-75 text-white px-[0.25ch] py-[0.125lh] rounded-b">
                     Step {stepNumber}
                   </div>
                 </div>
               );
             })}
           </div>
-          
+
           {/* Modal for enlarged image */}
           {selectedImage && (
-            <div 
+            <div
               className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center z-50"
               onClick={() => setSelectedImage(null)}
             >
@@ -74,6 +76,7 @@ export function ScreenshotGallery({ artifacts, runId }: ScreenshotGalleryProps) 
                   className="max-w-full max-h-full"
                 />
                 <button
+                  type="button"
                   onClick={() => setSelectedImage(null)}
                   className="absolute top-[0.5lh] right-[0.5ch] text-white bg-black bg-opacity-50 rounded-full w-[2ch] h-[2lh] flex items-center justify-center hover:bg-opacity-75"
                 >
