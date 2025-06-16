@@ -1,5 +1,6 @@
 import Mlflow from 'mlflow-js';
 import ky from 'ky';
+import type { MLFlowTraceArtifact } from './MLFlowTraces';
 
 /**
  * Wrapper around the mlflow-js library to make it better typed / easier to use.
@@ -51,7 +52,26 @@ export default class MLFlowClient {
     return response.json();
   }
 
-  async getTraces(options: {
+  async getTraceForRun(
+    experimentId: string,
+    runId: string,
+  ): Promise<MLFlowTraceArtifact | undefined> {
+    const traces = await this.getTraceList({
+      experimentIds: [experimentId],
+      orderBy: 'timestamp_ms DESC',
+      sourceRun: runId,
+    });
+    if (traces.traces.length === 0) {
+      console.error('No traces found for run', runId);
+      return undefined;
+    } else if (traces.traces.length > 1) {
+      console.warn('Multiple traces found for run', runId);
+    }
+    const trace = traces.traces[0];
+    return await this.getTraceArtifact(trace.request_id);
+  }
+
+  async getTraceList(options: {
     experimentIds: string[];
     orderBy?: string;
     filter?: string;
@@ -81,6 +101,12 @@ export default class MLFlowClient {
     const response = await ky.get(url);
 
     return response.json() as Promise<MLFlowTracesResponse>;
+  }
+
+  async getTraceArtifact(requestId: string): Promise<MLFlowTraceArtifact> {
+    const url = `${this.trackingUri}/ajax-api/2.0/mlflow/get-trace-artifact?request_id=${requestId}`;
+    const response = await ky.get(url);
+    return response.json();
   }
 }
 

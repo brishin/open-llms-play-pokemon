@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router';
-import type { MLFlowRun } from '~/MLFlowClient';
+import type { MLFlowRun } from '~/mflow/MLFlowClient';
 import { BoxContainer } from './BoxContainer';
 import dayjs from '~/dayjs';
 
@@ -37,7 +37,7 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
       title={`Runs (${runs.length})`}
     >
       <div className="my-[1lh] px-[1ch] flex-1 min-h-0">
-        <div className="overflow-y-auto gap-[1lh">
+        <div className="overflow-y-auto gap-[1lh] h-full">
           <ul>
             {runs.map((run) => {
               const badges = getLatestMetric(run, 'badges');

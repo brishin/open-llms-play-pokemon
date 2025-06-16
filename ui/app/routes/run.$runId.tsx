@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import TracesNav from '~/components/ExperimentsNav';
 import type { Route } from './+types/run.$runId';
-import MLFlowClient from '~/MLFlowClient';
+import MLFlowClient from '~/mflow/MLFlowClient';
 import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
 import { ScreenshotSlider } from '~/components/ScreenshotSlider';
@@ -10,23 +10,18 @@ import { GameDataViewer } from '~/components/GameDataViewer';
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');
   const experiment = await mlflow.getExperiment('open-llms-play-pokemon');
-  const [runs, run, artifacts, traces] = await Promise.all([
+  const [runs, run, artifacts, trace] = await Promise.all([
     mlflow.listRuns(experiment.experiment_id),
     mlflow.getRun(params.runId),
     mlflow.getArtifacts(params.runId),
-    mlflow.getTraces({
-      experimentIds: [experiment.experiment_id],
-      orderBy: 'timestamp_ms DESC',
-      sourceRun: params.runId,
-    }),
+    mlflow.getTraceForRun(experiment.experiment_id, params.runId),
   ]);
-  console.log(JSON.stringify(run, null, 2));
   const modelName = run.data.tags?.find((tag) => tag.key === 'llm_name')?.value;
-  return { runs, run, artifacts, traces, modelName };
+  return { runs, run, artifacts, trace, modelName };
 }
 
 export default function RunDetail({ loaderData }: Route.ComponentProps) {
-  const { run, artifacts, traces } = loaderData;
+  const { run, artifacts, trace } = loaderData;
   const [currentSliderIndex, setCurrentSliderIndex] = useState(0);
 
   // Extract screenshot step number from slider index
@@ -50,7 +45,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
   };
 
   return (
-    <div className="flex flex-row gap-1">
+    <div className="flex flex-row gap-1 h-screen">
       <TracesNav runs={loaderData.runs} />
       <div className="flex flex-col gap-[0.25lh] grow overflow-y-auto">
         {/* Basic run info */}

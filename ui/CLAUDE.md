@@ -30,10 +30,10 @@ This directory contains a React Router v7 web application that provides a user i
 
 ## Development Commands
 
-- **Start development server**: `pnpm dev` or `npm run dev`
-- **Build for production**: `pnpm build` or `npm run build`
-- **Type checking**: `pnpm typecheck` or `npm run typecheck`
-- **Start production server**: `pnpm start` or `npm run start`
+- **Start development server**: `pnpm dev`
+- **Build for production**: `pnpm build`
+- **Type checking**: `pnpm typecheck`
+- **Start production server**: `pnpm start`
 
 ## Dependencies
 

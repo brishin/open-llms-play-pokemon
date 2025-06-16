@@ -1,4 +1,4 @@
-import type { MLFlowRun } from '~/MLFlowClient';
+import type { MLFlowRun } from '~/mflow/MLFlowClient';
 import { BoxContainer, BoxContainerContent } from './BoxContainer';
 
 interface MetricsDisplayProps {
@@ -25,10 +25,10 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
   return (
     <BoxContainer shear="top" title="Game Metrics">
       <BoxContainerContent>
-        <div className="mt-[0.5lh] grid grid-cols-2 gap-[4ch]">
+        <div className="mt-[0.5lh] grid grid-cols-2 gap-[2ch]">
           <div className="space-y-[0.5lh]">
             <h1 className="font-semibold">Progress Metrics</h1>
-            <div className="space-y-[0.25lh]">
+            <div className="">
               <div className="flex justify-between">
                 <span>Badges Obtained:</span>
                 <span className="font-mono">{latestMetrics.badges?.value ?? 0}</span>
@@ -52,7 +52,7 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
 
           <div className="space-y-[0.5lh]">
             <h1 className="font-semibold">Run Configuration</h1>
-            <div className="space-y-[0.25lh]">
+            <div className="">
               <div className="flex justify-between">
                 <span>Max Steps:</span>
                 <span className="font-mono">{maxSteps ?? 'Unknown'}</span>
@@ -75,7 +75,8 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
           </div>
         </div>
 
-        {metrics.length > 0 && (
+        {/* Temporarily hide metrics for now */}
+        {metrics.length > 0 && false && (
           <div className="mt-[1lh]">
             <h1 className="font-semibold mb-[0.5lh]">Metric History</h1>
             <div className="max-h-[8lh] overflow-y-auto">

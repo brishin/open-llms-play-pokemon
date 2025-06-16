@@ -1,5 +1,5 @@
 import type { Route } from './+types/_index';
-import MLFlowClient from '~/MLFlowClient';
+import MLFlowClient from '~/mflow/MLFlowClient';
 import TracesNav from '~/components/ExperimentsNav';
 
 export async function loader() {
