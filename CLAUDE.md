@@ -17,6 +17,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Test LLM server**: `modal run server/llm_server.py::test`
 - **Get MLflow experiments**: `python mlflow/get_experiments.py` (fetch recent experiments with table output)
 - **Get MLflow runs**: `python mlflow/get_runs.py --limit 5 --status FINISHED` (fetch recent successful runs)
+- **Get MLflow runs with traces**: `python mlflow/get_runs.py --limit 5 --show-traces` (fetch runs with trace summary)
+- **Get MLflow traces**: `python mlflow/get_traces.py --limit 10 --status OK` (fetch traces with detailed information)
+- **Get traces for specific run**: `python mlflow/get_traces.py --run-id <run_id> --show-spans` (detailed trace inspection for a run)
 
 ## Architecture Overview
 

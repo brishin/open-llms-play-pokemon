@@ -4,7 +4,6 @@ from datetime import datetime
 from typing import Any
 
 import click
-from tabulate import tabulate
 
 import mlflow
 
@@ -20,13 +19,6 @@ import mlflow
     "--tracking-uri",
     default="http://localhost:8080",
     help="MLflow tracking server URI",
-)
-@click.option(
-    "--format",
-    "output_format",
-    default="table",
-    type=click.Choice(["table", "json", "csv"]),
-    help="Output format",
 )
 @click.option(
     "--experiment-id",
@@ -55,15 +47,20 @@ import mlflow
     type=click.Choice(["asc", "desc"]),
     help="Sort order",
 )
+@click.option(
+    "--show-traces",
+    is_flag=True,
+    help="Show trace summary for each run",
+)
 def get_runs(
     limit: int,
     tracking_uri: str,
-    output_format: str,
     experiment_id: str | None,
     experiment_name: str | None,
     status: str | None,
     sort_by: str,
     order: str,
+    show_traces: bool,
 ) -> None:
     """Fetch and display recent MLflow runs."""
     try:
@@ -74,20 +71,28 @@ def get_runs(
         client = mlflow.MlflowClient()
 
         # Determine experiment IDs to search
-        experiment_ids = []
+        experiment_ids: list[str] = []
         if experiment_id:
             experiment_ids = [experiment_id]
         elif experiment_name:
             try:
                 exp = client.get_experiment_by_name(experiment_name)
-                experiment_ids = [exp.experiment_id]
+                if exp is not None and exp.experiment_id is not None:
+                    experiment_ids = [exp.experiment_id]
+                else:
+                    click.echo(f"Experiment '{experiment_name}' not found.", err=True)
+                    return
             except Exception:
                 click.echo(f"Experiment '{experiment_name}' not found.", err=True)
                 return
         else:
             # Get all experiments if no specific filter
             experiments = client.search_experiments()
-            experiment_ids = [exp.experiment_id for exp in experiments]
+            experiment_ids = [
+                exp.experiment_id
+                for exp in experiments
+                if exp.experiment_id is not None
+            ]
 
         # Build filter string
         filter_string = ""
@@ -146,7 +151,7 @@ def get_runs(
             run_data.append(run_dict)
 
         # Always show artifact diagnosis by default
-        _print_artifact_diagnosis(run_data, client)
+        _print_artifact_diagnosis(run_data, client, show_traces)
 
     except Exception as e:
         click.echo(f"Error fetching runs: {e}", err=True)
@@ -176,62 +181,9 @@ def _calculate_duration(start_ms: int | None, end_ms: int | None) -> str:
         return f"{duration_seconds / 3600:.1f}h"
 
 
-def _print_table(data: list[dict[str, Any]]) -> None:
-    """Print runs as a formatted table."""
-    headers = [
-        "Run ID",
-        "Experiment",
-        "Status",
-        "Start Time",
-        "End Time",
-        "Duration",
-        "Artifacts",
-        "Key Metrics",
-    ]
-
-    table_data = []
-    for run in data:
-        table_data.append(
-            [
-                run["run_id"],
-                run["experiment_name"][:20] + "..."
-                if len(run["experiment_name"]) > 20
-                else run["experiment_name"],
-                run["status"],
-                run["start_time"],
-                run["end_time"],
-                run["duration"],
-                run["artifact_count"],
-                run["key_metrics"][:30] + "..."
-                if len(run["key_metrics"]) > 30
-                else run["key_metrics"],
-            ]
-        )
-
-    click.echo(tabulate(table_data, headers=headers, tablefmt="grid"))
-
-
-def _print_json(data: list[dict[str, Any]]) -> None:
-    """Print runs as JSON."""
-    import json
-
-    click.echo(json.dumps(data, indent=2))
-
-
-def _print_csv(data: list[dict[str, Any]]) -> None:
-    """Print runs as CSV."""
-    import csv
-    import sys
-
-    if not data:
-        return
-
-    writer = csv.DictWriter(sys.stdout, fieldnames=data[0].keys())
-    writer.writeheader()
-    writer.writerows(data)
-
-
-def _print_artifact_diagnosis(data: list[dict[str, Any]], client) -> None:
+def _print_artifact_diagnosis(
+    data: list[dict[str, Any]], client, show_traces: bool
+) -> None:
     """Print detailed artifact diagnosis for each run."""
     for run in data:
         click.echo(f"\n{'=' * 80}")
@@ -279,6 +231,55 @@ def _print_artifact_diagnosis(data: list[dict[str, Any]], client) -> None:
                     click.echo(f"  {key}: {value}")
         except Exception:
             pass
+
+        # Show trace summary if requested
+        if show_traces:
+            _print_trace_summary(run["full_run_id"], client)
+
+
+def _print_trace_summary(run_id: str, client) -> None:
+    """Print trace summary for a specific run."""
+    try:
+        # Search for traces associated with this run
+        traces = client.search_traces(run_id=run_id)
+
+        if not traces:
+            click.echo("\nTRACES: No traces found for this run.")
+            return
+
+        # Count traces by status
+        status_counts = {"OK": 0, "ERROR": 0, "IN_PROGRESS": 0}
+        total_traces = len(traces)
+
+        for trace in traces:
+            status = getattr(trace.info, "status", "UNKNOWN")
+            if status in status_counts:
+                status_counts[status] += 1
+
+        click.echo(f"\nTRACES ({total_traces}):")
+        if status_counts["OK"] > 0:
+            click.echo(f"  ✓ Success: {status_counts['OK']}")
+        if status_counts["ERROR"] > 0:
+            click.echo(f"  ✗ Error: {status_counts['ERROR']}")
+        if status_counts["IN_PROGRESS"] > 0:
+            click.echo(f"  ⏳ In Progress: {status_counts['IN_PROGRESS']}")
+
+        # Show recent traces (up to 3)
+        recent_traces = traces[:3]
+        click.echo("  Recent traces:")
+        for trace in recent_traces:
+            trace_id = trace.info.trace_id[:8] + "..."
+            status_icon = (
+                "✓"
+                if getattr(trace.info, "status", None) == "OK"
+                else ("✗" if getattr(trace.info, "status", None) == "ERROR" else "⏳")
+            )
+            timestamp_ms = getattr(trace.info, "timestamp_ms", None)
+            timestamp_str = _format_timestamp(timestamp_ms) if timestamp_ms else "N/A"
+            click.echo(f"    {status_icon} {trace_id} | {timestamp_str}")
+
+    except Exception as e:
+        click.echo(f"\nTRACES: Error fetching traces - {e}")
 
 
 if __name__ == "__main__":
