@@ -32,7 +32,7 @@ This directory contains a React Router v7 web application that provides a user i
 
 - **Start development server**: `pnpm dev`
 - **Build for production**: `pnpm build`
-- **Type checking**: `pnpm typecheck`
+- **Type checking**: `pnpm typecheck` (Use `--dir ui` as needed)
 - **Start production server**: `pnpm start`
 
 ## Dependencies

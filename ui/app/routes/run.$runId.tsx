@@ -6,7 +6,7 @@ import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
 import { ScreenshotSlider } from '~/components/ScreenshotSlider';
 import { GameDataPane } from '~/components/GameDataPane';
-import TracePane from '~/components/TracePane';
+import TracePane from '~/components/trace/TracePane';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');
@@ -96,7 +96,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
               runId={run.info.run_id}
               currentSliderStep={getCurrentStepNumber()}
             />
-            <TracePane trace={trace} />
+            <TracePane trace={trace} currentStep={getCurrentStepNumber()} />
           </div>
         </div>
       </div>

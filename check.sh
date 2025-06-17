@@ -10,7 +10,10 @@ uv run ruff format .
 echo "🔍 Running linting..."
 uv run ruff check . --fix
 
-echo "🏗️  Running type checking..."
+echo "🏗️  Running Python type checking..."
 uv run pyright
+
+echo "🏗️  Running TypeScript type checking..."
+pnpm --dir ui typecheck
 
 echo "✅ All checks passed!"
