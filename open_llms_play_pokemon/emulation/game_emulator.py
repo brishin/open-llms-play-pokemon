@@ -79,7 +79,7 @@ class GameEmulator:
 
                 # Add ticks between buttons except for the last one
                 if i < len(parsed_action.button_sequence) - 1:
-                    self.pyboy.tick(60, render=True)
+                    self.pyboy.tick(60, render=False)
 
             # Final tick after button sequence
             self.pyboy.tick(60, render=True)

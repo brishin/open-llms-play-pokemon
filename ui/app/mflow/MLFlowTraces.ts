@@ -2,16 +2,6 @@
  * TypeScript types for MLFlow traces and span artifact data
  */
 
-export type MLFlowSpanStatus = 'OK' | 'ERROR' | 'CANCELLED';
-
-export type MLFlowSpanType = 'AGENT' | 'LLM' | 'PARSER' | 'CHAT_MODEL' | 'TOOL';
-
-export interface MLFlowSpanEvent {
-  name: string;
-  timestamp: number;
-  attributes?: Record<string, unknown>;
-}
-
 export interface MLFlowSpanAttributes {
   [key: string]: string | number | boolean | null | undefined;
   'mlflow.traceRequestId'?: string;
@@ -46,6 +36,16 @@ export interface MLFlowSpan {
   status_message: string;
   attributes: MLFlowSpanAttributes;
   events: MLFlowSpanEvent[];
+}
+
+export type MLFlowSpanStatus = 'OK' | 'ERROR' | 'CANCELLED';
+
+export type MLFlowSpanType = 'AGENT' | 'LLM' | 'PARSER' | 'CHAT_MODEL' | 'TOOL';
+
+export interface MLFlowSpanEvent {
+  name: string;
+  timestamp: number;
+  attributes?: Record<string, unknown>;
 }
 
 export interface MLFlowSpanArtifact {

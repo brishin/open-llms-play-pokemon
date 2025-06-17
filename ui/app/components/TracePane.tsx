@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { BoxContainer } from '~/components/BoxContainer';
 import type { MLFlowSpan, MLFlowTraceArtifact } from '~/mflow/MLFlowTraces';
 
-interface TraceViewerProps {
+interface TracePaneProps {
   trace: MLFlowTraceArtifact | undefined;
 }
 
@@ -68,8 +68,8 @@ function PredictionStepCard({
   };
 
   return (
-    <div className="border border-surface0 rounded p-[1ch] mb-[0.5lh]">
-      <div className="flex justify-between items-center mb-[0.5lh]">
+    <div className="border border-surface0 px-[1ch] mb-[1lh] py-[1lh]">
+      <div className="flex justify-between items-center mb-[1lh]">
         <h3 className="font-semibold text-text">Step {stepNumber}</h3>
         <div className="text-subtext0">
           {duration && `${duration}ms`}
@@ -77,30 +77,30 @@ function PredictionStepCard({
         </div>
       </div>
 
-      <div className="mb-[0.5lh]">
-        <div className="font-medium text-subtext1 mb-[0.25lh]">Thought:</div>
-        <div className="text-text">{prediction.next_thought}</div>
+      <div>
+        <span className="font-bold">Thought: </span>
+        <span className="text-text">{prediction.next_thought}</span>
       </div>
 
       <div>
-        <div className="font-medium text-subtext1 mb-[0.25lh]">Action:</div>
-        <div className="font-mono text-text">
+        <span className="font-bold">Action: </span>
+        <span className="font-mono">
           {formatToolAction(prediction.next_tool_name, prediction.next_tool_args)}
-        </div>
+        </span>
       </div>
     </div>
   );
 }
 
-export default function TraceViewer({ trace }: TraceViewerProps) {
+export default function TracePane({ trace }: TracePaneProps) {
   const spans = useMemo(() => {
     if (!trace?.spans) return [];
     return filterPredictionSpans(trace.spans);
   }, [trace]);
 
   return (
-    <BoxContainer title="DSPy Predictions">
-      <div className="max-h-[20lh] overflow-y-auto">
+    <BoxContainer title="Reasoning Traces" shear="top">
+      <div className="max-h-[20lh] overflow-y-auto px-[1ch] pt-[1ch]">
         {!trace && (
           <div className="text-center text-subtext0 py-[2lh]">
             No trace data available for this run.
@@ -114,7 +114,7 @@ export default function TraceViewer({ trace }: TraceViewerProps) {
         )}
 
         {spans.length > 0 && (
-          <div className="space-y-[0.5lh]">
+          <div className="space-y-[1lh]">
             {spans.map((span, index) => (
               <PredictionStepCard
                 key={span.context?.span_id || index}
