@@ -97,8 +97,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
               currentSliderStep={getCurrentStepNumber()}
             />
             <TraceViewer
-              runId={run.info.run_id}
-              experimentId={run.info.experiment_id}
+              trace={trace}
             />
           </div>
         </div>
