@@ -6,6 +6,7 @@ import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
 import { ScreenshotSlider } from '~/components/ScreenshotSlider';
 import { GameDataViewer } from '~/components/GameDataViewer';
+import TraceViewer from '~/components/TraceViewer';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');
@@ -89,11 +90,17 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
             currentIndex={currentSliderIndex}
             setCurrentIndex={setCurrentSliderIndex}
           />
-          <GameDataViewer
-            artifacts={artifacts}
-            runId={run.info.run_id}
-            currentSliderStep={getCurrentStepNumber()}
-          />
+          <div className="flex flex-col gap-[0.25lh]">
+            <GameDataViewer
+              artifacts={artifacts}
+              runId={run.info.run_id}
+              currentSliderStep={getCurrentStepNumber()}
+            />
+            <TraceViewer
+              runId={run.info.run_id}
+              experimentId={run.info.experiment_id}
+            />
+          </div>
         </div>
       </div>
     </div>
