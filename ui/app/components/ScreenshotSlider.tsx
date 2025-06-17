@@ -59,16 +59,16 @@ export function ScreenshotSlider({
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === 'ArrowLeft') {
         event.preventDefault();
-        handlePrevious();
+        setCurrentIndex(Math.max(0, currentIndex - 1));
       } else if (event.key === 'ArrowRight') {
         event.preventDefault();
-        handleNext();
+        setCurrentIndex(Math.min(screenshots.length - 1, currentIndex + 1));
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [currentIndex, screenshots.length, setCurrentIndex]);
 
   if (screenshots.length === 0) {
     return (
