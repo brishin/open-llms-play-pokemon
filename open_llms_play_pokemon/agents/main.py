@@ -95,7 +95,6 @@ The current game screen is provided as an image. Analyze what's happening on scr
 
     def parse_action(self, response_text: str) -> ParsedAction | None:
         """Parse action from AI response and return parsed action or None."""
-        # return self.action_parser.parse_ai_response(response_text)
         return None
 
 

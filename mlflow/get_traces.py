@@ -221,7 +221,7 @@ def _print_trace_spans(trace, client) -> None:  # noqa: ARG001
                 "UNSET": "✓",  # Often means success
                 "ERROR": "✗",
                 "IN_PROGRESS": "⏳",
-                "RUNNING": "⏳"
+                "RUNNING": "⏳",
             }
 
             status_icon = status_mapping.get(status_str.upper(), "?")

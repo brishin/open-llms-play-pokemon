@@ -27,7 +27,12 @@ export function PredictionStepCard({
   stepNumber,
   isAfterCurrentStep,
   isCurrentStep,
-}: { span: MLFlowSpan; stepNumber: number; isAfterCurrentStep: boolean; isCurrentStep: boolean }) {
+}: {
+  span: MLFlowSpan;
+  stepNumber: number;
+  isAfterCurrentStep: boolean;
+  isCurrentStep: boolean;
+}) {
   const prediction = parsePredictionOutput(span);
   const duration =
     span.end_time && span.start_time
@@ -36,8 +41,8 @@ export function PredictionStepCard({
 
   if (!prediction) {
     return (
-      <div className="border border-surface0 rounded p-[1ch] mb-[0.5lh]">
-        <div className="text-subtext0 text-sm">
+      <div className="border border-surface0 p-[1ch] mb-[1lh]">
+        <div className="text-subtext0">
           Step {stepNumber}: Unable to parse prediction data
         </div>
       </div>
@@ -55,11 +60,11 @@ export function PredictionStepCard({
   };
 
   return (
-    <div 
+    <div
       className={twMerge(
         'border border-surface0 px-[1ch] mb-[1lh] py-[1lh]',
         isAfterCurrentStep && 'opacity-40',
-        isCurrentStep && 'scroll-mt-[2lh]'
+        isCurrentStep && 'scroll-mt-[2lh]',
       )}
       id={`step-${stepNumber}`}
     >

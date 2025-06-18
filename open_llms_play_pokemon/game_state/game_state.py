@@ -7,22 +7,7 @@ and evaluation examples.
 
 from dataclasses import asdict, dataclass
 
-
-@dataclass(slots=True, frozen=True)
-class TilePosition:
-    """Represents a tile position with coordinates."""
-
-    x: int
-    y: int
-
-
-@dataclass(slots=True, frozen=True)
-class TileWithDistance:
-    """Represents a tile position with distance from player."""
-
-    x: int
-    y: int
-    distance: int
+from .tile_data import TileMatrix
 
 
 @dataclass(slots=True, frozen=True)
@@ -68,15 +53,8 @@ class PokemonRedGameState:
     map_loading_status: int
     current_tileset: int
 
-    # All tiles data (no radius filtering)
-    walkable_tiles: list[TileWithDistance]
-    blocked_tiles: list[TileWithDistance]
-    encounter_tiles: list[TilePosition]
-    warp_tiles: list[TilePosition]
-    interactive_tiles: list[TilePosition]
-
-    # Tile type counts (all tiles on screen)
-    tile_type_counts: dict[str, int]
+    # Complete 2D tile matrix for spatial analysis
+    tile_matrix: TileMatrix
 
     # Movement options (immediate neighbors only)
     directions_available: DirectionsAvailable

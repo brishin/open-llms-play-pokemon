@@ -7,13 +7,10 @@ from .game_state import (
     DirectionsAvailable,
     PokemonHp,
     PokemonRedGameState,
-    TilePosition,
-    TileWithDistance,
 )
-from .screen_analyzer import (
-    analyze_screen,
-    categorize_tiles,
-)
+from .screen_analyzer import analyze_screen
+from .tile_data import TileMatrix
+from .tile_data_factory import TileDataFactory
 
 
 class PokemonRedMemoryReader:
@@ -109,38 +106,28 @@ class PokemonRedMemoryReader:
             enemy_mon_hp=enemy_mon_hp,
             map_loading_status=map_loading_status,
             current_tileset=current_tileset,
-            **tile_data,
+            tile_matrix=tile_data["tile_matrix"],
+            directions_available=tile_data["directions_available"],
         )
 
     def _process_tile_data(self, memory_view: PyBoyMemoryView) -> dict:
         """
-        Single method to process all tile data consistently.
+        Process tile data and create TileMatrix with movement analysis.
 
         Args:
             memory_view: PyBoy memory view for type-safe memory access
 
         Returns:
-            Dictionary with all processed tile data
+            Dictionary with tile matrix and directions available
         """
         # Get all tiles in one pass
-        tile_categories = categorize_tiles(memory_view)
         all_tiles = analyze_screen(memory_view)
 
+        # Create TileMatrix from all_tiles (20x18 screen)
+        tile_matrix = self._create_tile_matrix(memory_view, all_tiles)
+
         return {
-            "walkable_tiles": self._extract_tiles_with_distance(
-                tile_categories["walkable"]
-            ),
-            "blocked_tiles": self._extract_tiles_with_distance(
-                tile_categories["blocked"]
-            ),
-            "encounter_tiles": self._extract_tile_positions(
-                tile_categories["encounters"]
-            ),
-            "warp_tiles": self._extract_tile_positions(tile_categories["warps"]),
-            "interactive_tiles": self._extract_tile_positions(
-                tile_categories["interactive"]
-            ),
-            "tile_type_counts": self._count_tile_types(all_tiles),
+            "tile_matrix": tile_matrix,
             "directions_available": self._check_immediate_directions(
                 all_tiles, self.PLAYER_CENTER_X, self.PLAYER_CENTER_Y
             ),
@@ -174,38 +161,47 @@ class PokemonRedMemoryReader:
             west=directions_dict["west"],
         )
 
-    @staticmethod
-    def _calculate_distance(tile_x: int, tile_y: int) -> int:
-        """Calculate Manhattan distance from player center."""
-        return abs(tile_x - PokemonRedMemoryReader.PLAYER_CENTER_X) + abs(
-            tile_y - PokemonRedMemoryReader.PLAYER_CENTER_Y
-        )
+    def _create_tile_matrix(
+        self, memory_view: PyBoyMemoryView, all_tiles: list
+    ) -> TileMatrix:
+        """
+        Create a TileMatrix from the list of tiles.
 
-    @staticmethod
-    def _extract_tile_positions(tiles: list) -> list[TilePosition]:
-        """Extract tile positions as dataclasses."""
-        return [TilePosition(x=t.x, y=t.y) for t in tiles]
+        Args:
+            memory_view: PyBoy memory view for getting player position and map info
+            all_tiles: List of TileData objects from analyze_screen
 
-    @staticmethod
-    def _extract_tiles_with_distance(tiles: list) -> list[TileWithDistance]:
-        """Extract tile positions with distance as dataclasses."""
-        return [
-            TileWithDistance(
-                x=t.x,
-                y=t.y,
-                distance=PokemonRedMemoryReader._calculate_distance(t.x, t.y),
-            )
-            for t in tiles
+        Returns:
+            TileMatrix with 2D array of tiles
+        """
+        # GameBoy screen is 20x18 tiles
+        width, height = 20, 18
+
+        # Initialize 2D matrix with placeholder tiles
+        matrix = [
+            [TileDataFactory.create_placeholder(x, y) for x in range(width)]
+            for y in range(height)
         ]
 
-    @staticmethod
-    def _count_tile_types(all_tiles: list) -> dict[str, int]:
-        """Count tiles by type."""
-        tile_type_counts = {}
+        # Fill matrix with actual tiles
         for tile in all_tiles:
-            tile_type_str = tile.tile_type.value
-            tile_type_counts[tile_type_str] = tile_type_counts.get(tile_type_str, 0) + 1
-        return tile_type_counts
+            if 0 <= tile.x < width and 0 <= tile.y < height:
+                matrix[tile.y][tile.x] = tile
+
+        # Get current map info
+        current_map = memory_view[MemoryAddresses.current_map]
+        player_x = memory_view[MemoryAddresses.x_coord]
+        player_y = memory_view[MemoryAddresses.y_coord]
+
+        return TileMatrix(
+            tiles=matrix,
+            width=width,
+            height=height,
+            current_map=current_map,
+            player_x=player_x,
+            player_y=player_y,
+            timestamp=None,  # Could add frame counter if needed
+        )
 
     @staticmethod
     def _read_16bit(memory_view: PyBoyMemoryView, start_addr: int) -> int:

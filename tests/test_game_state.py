@@ -13,12 +13,32 @@ from open_llms_play_pokemon.game_state import (  # noqa: E402
     PokemonHp,
     PokemonRedGameState,
     PokemonRedMemoryReader,
-    TilePosition,
-    TileWithDistance,
 )
 from open_llms_play_pokemon.game_state.data.memory_addresses import (  # noqa: E402
     MemoryAddresses,
 )
+from open_llms_play_pokemon.game_state.tile_data import TileMatrix  # noqa: E402
+from open_llms_play_pokemon.game_state.tile_data_factory import (  # noqa: E402
+    TileDataFactory,
+)
+
+
+def create_test_tile_matrix() -> TileMatrix:
+    """Create a test TileMatrix with placeholder tiles."""
+    width, height = 20, 18
+    tiles = [
+        [TileDataFactory.create_placeholder(x, y) for x in range(width)]
+        for y in range(height)
+    ]
+    return TileMatrix(
+        tiles=tiles,
+        width=width,
+        height=height,
+        current_map=1,
+        player_x=10,
+        player_y=9,
+        timestamp=None,
+    )
 
 
 def test_game_state_to_dict():
@@ -39,12 +59,7 @@ def test_game_state_to_dict():
         enemy_mon_hp=None,
         map_loading_status=0,
         current_tileset=1,
-        walkable_tiles=[],
-        blocked_tiles=[],
-        encounter_tiles=[],
-        warp_tiles=[],
-        interactive_tiles=[],
-        tile_type_counts={},
+        tile_matrix=create_test_tile_matrix(),
         directions_available=DirectionsAvailable(
             north=True, south=True, east=True, west=True
         ),
@@ -78,19 +93,7 @@ def test_consolidated_game_state_structure():
         enemy_mon_hp=None,
         map_loading_status=0,
         current_tileset=2,
-        walkable_tiles=[
-            TileWithDistance(x=5, y=5, distance=2),
-            TileWithDistance(x=6, y=6, distance=3),
-            TileWithDistance(x=7, y=7, distance=4),
-        ],
-        blocked_tiles=[
-            TileWithDistance(x=0, y=0, distance=15),
-            TileWithDistance(x=1, y=1, distance=14),
-        ],
-        encounter_tiles=[TilePosition(x=8, y=8), TilePosition(x=9, y=9)],
-        warp_tiles=[TilePosition(x=10, y=10)],
-        interactive_tiles=[TilePosition(x=11, y=11)],
-        tile_type_counts={"walkable": 3, "blocked": 2, "grass": 2},
+        tile_matrix=create_test_tile_matrix(),
         directions_available=DirectionsAvailable(
             north=True,
             south=False,
@@ -106,9 +109,9 @@ def test_consolidated_game_state_structure():
     assert data["step_counter"] == 10
     assert data["player_name"] == "TEST"
     assert data["current_map"] == 5
-    assert len(data["walkable_tiles"]) == 3
-    assert len(data["blocked_tiles"]) == 2
-    assert data["tile_type_counts"]["walkable"] == 3
+    assert "tile_matrix" in data
+    assert data["tile_matrix"]["width"] == 20
+    assert data["tile_matrix"]["height"] == 18
 
     # Verify directions
     directions = data["directions_available"]
@@ -170,9 +173,9 @@ def test_memory_reader_consolidated_method():
     assert consolidated.badges_obtained == 2
 
     # Verify tile data structure
-    assert isinstance(consolidated.walkable_tiles, list)
-    assert isinstance(consolidated.blocked_tiles, list)
-    assert isinstance(consolidated.tile_type_counts, dict)
+    assert isinstance(consolidated.tile_matrix, TileMatrix)
+    assert consolidated.tile_matrix.width == 20
+    assert consolidated.tile_matrix.height == 18
     assert isinstance(consolidated.directions_available, DirectionsAvailable)
 
     # Verify directions have the expected attributes
@@ -184,46 +187,19 @@ def test_memory_reader_consolidated_method():
 
 
 def test_memory_reader_utility_methods():
-    """Test the utility methods in PokemonRedMemoryReader."""
+    """Test the remaining utility methods in PokemonRedMemoryReader."""
     reader = PokemonRedMemoryReader(Mock())
 
-    # Test distance calculation
-    distance = reader._calculate_distance(15, 12)
-    expected = abs(15 - 10) + abs(12 - 9)  # Manhattan distance from center (10, 9)
-    assert distance == expected
-
-    # Test coordinate extraction
+    # Test directions checking
     mock_tiles = [
-        Mock(x=5, y=6),
-        Mock(x=7, y=8),
-        Mock(x=9, y=10),
+        Mock(x=10, y=8, is_walkable=True),  # North of player (10, 9)
+        Mock(x=10, y=10, is_walkable=False),  # South of player
+        Mock(x=11, y=9, is_walkable=True),  # East of player
+        Mock(x=9, y=9, is_walkable=True),  # West of player
     ]
 
-    positions = reader._extract_tile_positions(mock_tiles)
-    expected_positions = [
-        TilePosition(x=5, y=6),
-        TilePosition(x=7, y=8),
-        TilePosition(x=9, y=10),
-    ]
-    assert positions == expected_positions
-
-    # Test position extraction with distance
-    tiles_with_distance = reader._extract_tiles_with_distance(mock_tiles)
-    assert len(tiles_with_distance) == 3
-    assert tiles_with_distance[0].x == 5
-    assert tiles_with_distance[0].y == 6
-    assert isinstance(tiles_with_distance[0].distance, int)
-
-    # Test tile type counting
-    mock_tiles_for_count = [
-        Mock(tile_type=Mock(value="walkable")),
-        Mock(tile_type=Mock(value="walkable")),
-        Mock(tile_type=Mock(value="blocked")),
-        Mock(tile_type=Mock(value="grass")),
-        Mock(tile_type=Mock(value="walkable")),
-    ]
-
-    counts = reader._count_tile_types(mock_tiles_for_count)
-    assert counts["walkable"] == 3
-    assert counts["blocked"] == 1
-    assert counts["grass"] == 1
+    directions = reader._check_immediate_directions(mock_tiles, 10, 9)
+    assert directions.north is True
+    assert directions.south is False
+    assert directions.east is True
+    assert directions.west is True

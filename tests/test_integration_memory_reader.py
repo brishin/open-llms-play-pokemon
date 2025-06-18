@@ -12,9 +12,8 @@ from open_llms_play_pokemon.game_state import (  # noqa: E402
     PokemonHp,
     PokemonRedGameState,
     PokemonRedMemoryReader,
-    TilePosition,
-    TileWithDistance,
 )
+from open_llms_play_pokemon.game_state.tile_data import TileMatrix  # noqa: E402
 
 
 def test_memory_reader_integration_with_init_state():
@@ -96,30 +95,20 @@ def test_memory_reader_integration_with_init_state():
             assert game_state.player_mon_hp is not None
             assert isinstance(game_state.player_mon_hp, PokemonHp)
 
-        # Tile data validation
-        assert isinstance(game_state.walkable_tiles, list)
-        assert isinstance(game_state.blocked_tiles, list)
-        assert isinstance(game_state.encounter_tiles, list)
-        assert isinstance(game_state.warp_tiles, list)
-        assert isinstance(game_state.interactive_tiles, list)
+        # Tile matrix validation
+        assert isinstance(game_state.tile_matrix, TileMatrix)
+        assert game_state.tile_matrix.width == 20
+        assert game_state.tile_matrix.height == 18
+        assert game_state.tile_matrix.current_map == game_state.current_map
+        assert game_state.tile_matrix.player_x == game_state.player_x
+        assert game_state.tile_matrix.player_y == game_state.player_y
 
-        # Verify tile structures
-        for tile in game_state.walkable_tiles:
-            assert isinstance(tile, TileWithDistance)
-            assert isinstance(tile.distance, int)
-            assert tile.distance >= 0
-
-        for tile in game_state.encounter_tiles:
-            assert isinstance(tile, TilePosition)
-            assert isinstance(tile.x, int)
-            assert isinstance(tile.y, int)
-
-        # Tile type counts validation
-        assert isinstance(game_state.tile_type_counts, dict)
-        for tile_type, count in game_state.tile_type_counts.items():
-            assert isinstance(tile_type, str)
-            assert isinstance(count, int)
-            assert count >= 0
+        # Verify tile matrix has tiles
+        test_tile = game_state.tile_matrix.get_tile(0, 0)
+        assert test_tile is not None
+        assert hasattr(test_tile, "tile_id")
+        assert hasattr(test_tile, "is_walkable")
+        assert hasattr(test_tile, "tile_type")
 
         # Directions validation
         assert isinstance(game_state.directions_available, DirectionsAvailable)
@@ -134,7 +123,7 @@ def test_memory_reader_integration_with_init_state():
         assert "player_name" in game_dict
         assert "current_map" in game_dict
         assert "party_count" in game_dict
-        assert "walkable_tiles" in game_dict
+        assert "tile_matrix" in game_dict
         assert "directions_available" in game_dict
 
         # Verify serialized directions structure
@@ -152,8 +141,12 @@ def test_memory_reader_integration_with_init_state():
         print(f"   Position: ({game_state.player_x}, {game_state.player_y})")
         print(f"   Party: {game_state.party_count} Pokemon")
         print(f"   Badges: {game_state.badges_obtained}")
-        print(f"   Walkable tiles: {len(game_state.walkable_tiles)}")
-        print(f"   Tile types: {list(game_state.tile_type_counts.keys())}")
+        print(
+            f"   Tile Matrix: {game_state.tile_matrix.width}x{game_state.tile_matrix.height}"
+        )
+        print(
+            f"   Walkable tiles in matrix: {len(game_state.tile_matrix.get_walkable_tiles())}"
+        )
         print(f"   Directions available: {directions_dict}")
 
     finally:
