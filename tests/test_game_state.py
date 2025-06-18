@@ -8,13 +8,13 @@ from unittest.mock import Mock
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
 
-from open_llms_play_pokemon.game_state import (  # noqa: E402
+from open_llms_play_pokemon.game_state import (
     DirectionsAvailable,
     PokemonHp,
     PokemonRedGameState,
     PokemonRedMemoryReader,
 )
-from open_llms_play_pokemon.game_state.data.memory_addresses import (  # noqa: E402
+from open_llms_play_pokemon.game_state.data.memory_addresses import (
     MemoryAddresses,
 )
 from open_llms_play_pokemon.game_state.tile_data import TileMatrix  # noqa: E402
