@@ -8,16 +8,19 @@ from .game_state import (
     PokemonHp,
     PokemonRedGameState,
 )
-from .screen_analyzer import analyze_screen
 from .tile_data import TileMatrix
 from .tile_data_factory import TileDataFactory
+from .tile_reader import read_entire_screen
 
 
 class PokemonRedMemoryReader:
     """Utility class to read Pokemon Red game state from memory/symbols"""
 
-    # Player is always at screen center
-    PLAYER_CENTER_X, PLAYER_CENTER_Y = 10, 9
+    # Player sprite position on screen (based on Pokemon Red assembly analysis)
+    # Player sprite occupies tiles (8,9)-(9,10) [2x2 tiles at 16x16 pixels]
+    # Pixel position: (64,60) - hardcoded in Pokemon Red overworld.asm
+    # NOTE: NOT at true screen center (10,9) - offset northwest for gameplay
+    PLAYER_SCREEN_X, PLAYER_SCREEN_Y = 8, 9  # Top-left of 2x2 sprite
 
     def __init__(self, pyboy):
         self.pyboy = pyboy
@@ -121,7 +124,7 @@ class PokemonRedMemoryReader:
             Dictionary with tile matrix and directions available
         """
         # Get all tiles in one pass
-        all_tiles = analyze_screen(memory_view)
+        all_tiles = read_entire_screen(memory_view)
 
         # Create TileMatrix from all_tiles (20x18 screen)
         tile_matrix = self._create_tile_matrix(memory_view, all_tiles)
@@ -129,7 +132,7 @@ class PokemonRedMemoryReader:
         return {
             "tile_matrix": tile_matrix,
             "directions_available": self._check_immediate_directions(
-                all_tiles, self.PLAYER_CENTER_X, self.PLAYER_CENTER_Y
+                all_tiles, self.PLAYER_SCREEN_X, self.PLAYER_SCREEN_Y
             ),
         }
 

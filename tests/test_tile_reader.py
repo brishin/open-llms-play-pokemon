@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, Mock
 
 import pytest
 from game_state.data.tile_data_constants import TilesetID
-from game_state.enhanced_tile_creator import create_tile_data
 from game_state.tile_data import TileType
+from game_state.tile_reader import read_single_tile
 
 
 def test_detect_ledge_info():
@@ -100,7 +100,7 @@ def test_create_tile_data_integration(monkeypatch):
         return False  # Walkable
 
     # Apply mocks using monkeypatch
-    import game_state.enhanced_tile_creator as enhanced_tile_creator_module
+    import game_state.tile_reader as enhanced_tile_creator_module
 
     monkeypatch.setattr(enhanced_tile_creator_module, "get_tile_id", mock_get_tile_id)
     monkeypatch.setattr(
@@ -116,7 +116,7 @@ def test_create_tile_data_integration(monkeypatch):
     )
 
     # Test create_tile_data
-    tile_data = create_tile_data(memory_view, 0, 0)
+    tile_data = read_single_tile(memory_view, 0, 0)
 
     # Verify basic properties
     assert tile_data.tile_id == 0x52

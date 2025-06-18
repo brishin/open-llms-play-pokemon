@@ -20,8 +20,7 @@ The `game_state` package provides comprehensive Pokemon Red game state reading a
 - **TilePropertyDetector**: Consolidated detector for all tile properties with static methods
 
 ### 📊 **Screen Analysis**
-- **screen_analyzer.py**: Batch processing functions for analyzing entire screen areas
-- **enhanced_tile_creator.py**: Core tile creation with full property detection
+- **tile_reader.py**: Core tile creation with full property detection
 
 ## Key Classes & Usage
 

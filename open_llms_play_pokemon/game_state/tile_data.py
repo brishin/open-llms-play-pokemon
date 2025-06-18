@@ -124,13 +124,24 @@ class TileMatrix:
     """
     Complete tile data matrix for a game area.
 
+    Screen Coordinates vs World Coordinates:
+    - Screen: 20x18 tiles (160x144 pixels / 8x8 pixel tiles)
+    - Player sprite: Always at screen tiles (8,9)-(9,10) [2x2 tiles, 16x16 pixels]
+    - Player sprite pixel position: (64,60) - hardcoded in Pokemon Red assembly
+    - True screen center: (10,9) but player is offset northwest for gameplay reasons
+
+    Coordinate Systems:
+    - tile.x, tile.y: Screen coordinates (0-19, 0-17)
+    - tile.map_x, tile.map_y: World coordinates (absolute map position)
+    - player_x, player_y: World coordinates (stored in game memory)
+
     Attributes:
-        tiles: 2D matrix of TileData objects
-        width: Width of the matrix
-        height: Height of the matrix
+        tiles: 2D matrix of TileData objects [tiles[y][x] format]
+        width: Width of the matrix (always 20 for Pokemon Red)
+        height: Height of the matrix (always 18 for Pokemon Red)
         current_map: Map ID where this data was captured
-        player_x: Player's X position when data was captured
-        player_y: Player's Y position when data was captured
+        player_x: Player's world X position when data was captured
+        player_y: Player's world Y position when data was captured
         timestamp: When this data was captured (frame count or timestamp)
     """
 

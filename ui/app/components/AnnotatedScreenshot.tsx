@@ -106,7 +106,7 @@ export function AnnotatedScreenshot({
   const renderWalkabilityOverlay = () => {
     if (!gameState?.tile_matrix || !image) return null;
 
-    const { tiles, width, height, player_x, player_y } = gameState.tile_matrix;
+    const { tiles, width, height } = gameState.tile_matrix;
     const overlays: React.ReactNode[] = [];
 
     // GameBoy screen is 160x144 pixels, typically scaled up
@@ -124,8 +124,8 @@ export function AnnotatedScreenshot({
         if (!tile) continue;
 
         // Calculate pixel position on screen
-        const pixelX = tile.x * tileSize * scaleX;
-        const pixelY = tile.y * tileSize * scaleY;
+        const pixelX = x * tileSize * scaleX;
+        const pixelY = y * tileSize * scaleY;
         const tileWidth = tileSize * scaleX;
         const tileHeight = tileSize * scaleY;
 
@@ -155,9 +155,10 @@ export function AnnotatedScreenshot({
           strokeColor = 'rgba(255, 165, 0, 0.9)';
         }
 
-        // Highlight player position
-        if (player_x === tile.x && player_y === tile.y) {
-          fillColor = 'rgba(255, 0, 255, 0.6)'; // Magenta for player
+        // Highlight player position (2x2 tiles starting at 8,9)
+        const isPlayerTile = x >= 8 && x <= 9 && y >= 8 && y <= 9;
+        if (isPlayerTile) {
+          fillColor = 'rgba(255, 0, 255, 0.6)'; // Magenta for player position
           strokeColor = 'rgba(255, 0, 255, 1.0)';
         }
 

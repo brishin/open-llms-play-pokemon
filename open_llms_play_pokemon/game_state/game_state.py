@@ -39,8 +39,8 @@ class PokemonRedGameState:
     # Core game state
     player_name: str
     current_map: int
-    player_x: int
-    player_y: int
+    player_x: int  # World/map coordinates - absolute position in game world
+    player_y: int  # World/map coordinates - absolute position in game world
     party_count: int
     party_pokemon_levels: list[int]
     party_pokemon_hp: list[PokemonHp]
@@ -54,6 +54,9 @@ class PokemonRedGameState:
     current_tileset: int
 
     # Complete 2D tile matrix for spatial analysis
+    # NOTE: Player sprite is ALWAYS at screen position (8,9)-(9,10) [2x2 tiles]
+    # This is hardcoded in Pokemon Red assembly code at pixel coords (64,60)
+    # Screen is 20x18 tiles, true center would be (10,9) but player is offset
     tile_matrix: TileMatrix
 
     # Movement options (immediate neighbors only)
