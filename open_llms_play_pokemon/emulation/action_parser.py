@@ -1,5 +1,4 @@
 import logging
-import re
 from typing import NamedTuple
 
 
@@ -11,10 +10,9 @@ class ParsedAction(NamedTuple):
 
 
 class ActionParser:
-    """Parser for AI-generated game actions."""
+    """Parser for button sequences."""
 
     VALID_BUTTONS = {"a", "b", "start", "select", "up", "down", "left", "right"}
-    ACTION_PATTERN = re.compile(r"buttons\(['\"]([^'\"]*)['\"]", re.IGNORECASE)
 
     def __init__(self):
         """Initialize the action parser."""
@@ -22,10 +20,10 @@ class ActionParser:
 
     def parse_button_action(self, sequence_str: str) -> ParsedAction | None:
         """
-        Parse button action string directly.
+        Parse button sequence string directly.
 
         Args:
-            button_action: Button action string like "buttons('a b')"
+            sequence_str: Button sequence string like "a b"
 
         Returns:
             ParsedAction with button sequence or None if parsing fails
