@@ -4,7 +4,7 @@ import type { Route } from './+types/run.$runId';
 import MLFlowClient from '~/mflow/MLFlowClient';
 import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
-import { ScreenshotSlider } from '~/components/ScreenshotSlider';
+import { ScreenshotsPane } from '~/components/ScreenshotsPane';
 import { GameDataPane } from '~/components/GameDataPane';
 import TracePane from '~/components/trace/TracePane';
 
@@ -84,7 +84,7 @@ export default function RunDetail({ loaderData }: Route.ComponentProps) {
 
         {/* Screenshots and game data in a grid */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-[0.25lh] flex-grow">
-          <ScreenshotSlider
+          <ScreenshotsPane
             artifacts={artifacts}
             runId={run.info.run_id}
             currentIndex={currentSliderIndex}

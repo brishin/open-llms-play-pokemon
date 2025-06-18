@@ -1,20 +1,31 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useFetcher } from 'react-router';
 import { BoxContainer } from './BoxContainer';
 import { AnnotatedScreenshot } from './AnnotatedScreenshot';
+import {
+  getGameStateFiles,
+  findClosestGameStateStep,
+  getGameStateApiUrl,
+} from '../game-state/GameStates';
+import type { GameState } from '../game-state/GameState.types';
 
-interface ScreenshotSliderProps {
+interface ScreenshotsPaneProps {
   artifacts: any[];
   runId: string;
   currentIndex: number;
   setCurrentIndex: (index: number) => void;
 }
 
-export function ScreenshotSlider({
+export function ScreenshotsPane({
   artifacts,
   runId,
   currentIndex,
   setCurrentIndex,
-}: ScreenshotSliderProps) {
+}: ScreenshotsPaneProps) {
+  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [selectedArtifactPath, setSelectedArtifactPath] = useState<string>('');
+  const fetcher = useFetcher<GameState>();
+
   // Filter for screenshot artifacts and sort by step number
   const screenshots = artifacts
     .filter(
@@ -42,6 +53,22 @@ export function ScreenshotSlider({
     const stepMatch = screenshot.path.match(/screenshot_(\d+)\.png/);
     return stepMatch ? Number.parseInt(stepMatch[1]) : currentIndex + 1;
   };
+
+  const gameStateFiles = getGameStateFiles(artifacts);
+
+  const loadGameData = (artifactPath: string) => {
+    setSelectedArtifactPath(artifactPath);
+    fetcher.load(getGameStateApiUrl(runId, artifactPath));
+  };
+
+  // Load game state based on current step
+  useEffect(() => {
+    const currentStepNumber = getCurrentStepNumber();
+    const closestStep = findClosestGameStateStep(gameStateFiles, currentStepNumber);
+    if (closestStep && closestStep.path !== selectedArtifactPath) {
+      loadGameData(closestStep.path);
+    }
+  }, [currentIndex, gameStateFiles, selectedArtifactPath, runId]);
 
   const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setCurrentIndex(Number.parseInt(event.target.value));
@@ -87,10 +114,10 @@ export function ScreenshotSlider({
   return (
     <BoxContainer
       shear="top"
-      title={`Screenshots - Step ${currentStepNumber} (${currentIndex + 1}/${screenshots.length})`}
-      className="px-[1ch] pb-[1ch]"
+      title={`Step ${currentStepNumber} (${currentIndex + 1}/${screenshots.length})`}
+      className="px-[1ch]"
     >
-      <div className="mt-[0.5lh] flex flex-col gap-[0.5lh]">
+      <div className="flex flex-col">
         {/* Main screenshot display */}
         <div className="flex justify-center min-h-[20lh]">
           {currentScreenshot && (
@@ -100,12 +127,21 @@ export function ScreenshotSlider({
               className="max-w-[60ch] min-w-3/4"
               maxWidth={480}
               maxHeight={320}
+              gameState={fetcher.data}
+              showAnnotations={showAnnotations}
             />
           )}
         </div>
 
         {/* Controls */}
-        <div className="flex flex-col gap-[0.25lh]">
+        <div className="flex flex-col">
+          {/* Toggle Annotations Button */}
+          <div className="flex justify-center">
+            <button type="button" onClick={() => setShowAnnotations(!showAnnotations)}>
+              {showAnnotations ? 'Hide Annotations' : 'Show Annotations'}
+            </button>
+          </div>
+
           {/* Slider */}
           <div className="flex items-center gap-[1ch]">
             <div box-="square">
@@ -145,8 +181,8 @@ export function ScreenshotSlider({
           </div>
 
           {/* Step info */}
-          <div className="text-center text-sm text-gray-600">
-            Step {currentStepNumber} • Use arrow keys or slider to navigate
+          <div className="text-center text-gray-600 italic">
+            Use arrow keys or slider to navigate
           </div>
         </div>
       </div>
