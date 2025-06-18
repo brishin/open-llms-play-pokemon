@@ -27,6 +27,7 @@ class GameEmulator:
             log_level="CRITICAL",
             symbols=self.symbols_path,
             sound_emulated=False,
+            cgb=True,
         )
         self.pyboy.set_emulation_speed(0)
 
