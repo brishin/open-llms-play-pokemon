@@ -4,8 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Commands
 
-- **Run the main Pokemon player**: `python -m open_llms_play_pokemon.agents.main`
-- **Run the DSPy-based Pokemon player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 5 --headless` (Use the given arguments unless specified otherwise)
+- **Run the Pokemon player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 5 --headless` (Use the given arguments unless specified otherwise)
 - **Install dependencies**: `uv sync` (project uses uv for dependency management)
 - **Run all tests**: `uv run pytest tests/ -v`
 - **Run specific test**: `uv run pytest tests/test_action_parser.py -v`
@@ -27,11 +26,10 @@ This project implements an AI agent that plays Pokemon Red using vision-language
 
 ### Core Components
 
-1. **PokemonRedPlayer** (`open-llms-play-pokemon/agents/main.py`): Original game controller that integrates PyBoy emulator with AI decision-making
-2. **PokemonRedDSPyPlayer** (`open-llms-play-pokemon/agents/main_dspy.py`): DSPy-based implementation with structured reasoning modules
-3. **ActionParser** (`open-llms-play-pokemon/emulation/action_parser.py`): Parses AI responses and executes button sequences on PyBoy emulator
-4. **LLM Server** (`server/llm_server.py`): Modal-based vLLM server running UI-TARS-1.5-7B model for game vision understanding
-5. **Game Tools** (`open-llms-play-pokemon/tools.py`): GameBoy button mapping utilities for LLM function calling
+1. **PokemonRedDSPyPlayer** (`open-llms-play-pokemon/agents/main_dspy.py`): DSPy-based implementation with structured reasoning modules
+2. **ActionParser** (`open-llms-play-pokemon/emulation/action_parser.py`): Parses AI responses and executes button sequences on PyBoy emulator
+3. **LLM Server** (`server/llm_server.py`): Modal-based vLLM server running UI-TARS-1.5-7B model for game vision understanding
+4. **Game Tools** (`open-llms-play-pokemon/tools.py`): GameBoy button mapping utilities for LLM function calling
 
 ### Key Technical Details
 
@@ -42,7 +40,7 @@ This project implements an AI agent that plays Pokemon Red using vision-language
 
 ### Game State Management
 
-The `/game/` directory contains various saved states representing different progress points in Pokemon Red. The main player loads `init.state` by default but can be modified to start from different states for testing specific scenarios.
+The `/game/` directory contains various saved states representing different progress points in Pokemon Red. The DSPy player loads `init.state` by default but can be modified to start from different states for testing specific scenarios.
 
 ### Development Notes
 

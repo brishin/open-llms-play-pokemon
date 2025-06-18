@@ -17,8 +17,8 @@ from open_llms_play_pokemon.game_state import (
 from open_llms_play_pokemon.game_state.data.memory_addresses import (
     MemoryAddresses,
 )
-from open_llms_play_pokemon.game_state.tile_data import TileMatrix  # noqa: E402
-from open_llms_play_pokemon.game_state.tile_data_factory import (  # noqa: E402
+from open_llms_play_pokemon.game_state.tile_data import TileMatrix
+from open_llms_play_pokemon.game_state.tile_data_factory import (
     TileDataFactory,
 )
 

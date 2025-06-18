@@ -13,7 +13,7 @@ from open_llms_play_pokemon.game_state import (
     PokemonRedGameState,
     PokemonRedMemoryReader,
 )
-from open_llms_play_pokemon.game_state.tile_data import TileMatrix  # noqa: E402
+from open_llms_play_pokemon.game_state.tile_data import TileMatrix
 
 
 def test_memory_reader_integration_with_init_state():
