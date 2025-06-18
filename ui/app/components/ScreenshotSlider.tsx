@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { BoxContainer } from './BoxContainer';
+import { AnnotatedScreenshot } from './AnnotatedScreenshot';
 
 interface ScreenshotSliderProps {
   artifacts: any[];
@@ -27,7 +28,7 @@ export function ScreenshotSlider({
     });
 
   const getArtifactUrl = (artifactPath: string) => {
-    return `http://localhost:8080/get-artifact?path=${encodeURIComponent(artifactPath)}&run_uuid=${runId}`;
+    return `/api/mlflow/artifact?runId=${encodeURIComponent(runId)}&artifactPath=${encodeURIComponent(artifactPath)}`;
   };
 
   const getCurrentScreenshot = () => {
@@ -93,10 +94,12 @@ export function ScreenshotSlider({
         {/* Main screenshot display */}
         <div className="flex justify-center min-h-[20lh]">
           {currentScreenshot && (
-            <img
+            <AnnotatedScreenshot
               src={getArtifactUrl(currentScreenshot.path)}
               alt={`Screenshot ${currentStepNumber}`}
-              className="max-w-[60ch] min-w-3/4 object-contain pixelated"
+              className="max-w-[60ch] min-w-3/4"
+              maxWidth={480}
+              maxHeight={320}
             />
           )}
         </div>

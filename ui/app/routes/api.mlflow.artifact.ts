@@ -1,4 +1,4 @@
-import type { Route } from './+types/api.game-state';
+import type { Route } from './+types/api.mlflow.artifact';
 import MLFlowClient from '~/mflow/MLFlowClient';
 
 export async function loader({ request }: Route.LoaderArgs) {
@@ -12,10 +12,17 @@ export async function loader({ request }: Route.LoaderArgs) {
 
   try {
     const mlflowClient = new MLFlowClient('http://localhost:8080');
-    const gameData = await mlflowClient.getArtifactJSON(runId, artifactPath);
-    return gameData;
+    const artifact = await mlflowClient.getArtifactBinary(runId, artifactPath);
+    
+    // Return the artifact as a binary response with appropriate headers
+    return new Response(artifact, {
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600',
+      },
+    });
   } catch (error) {
-    console.error('Failed to load game data:', error);
+    console.error('Failed to load artifact:', error);
     throw new Response('Internal server error', { status: 500 });
   }
 }

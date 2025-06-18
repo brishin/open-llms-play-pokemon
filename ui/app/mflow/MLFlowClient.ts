@@ -46,10 +46,16 @@ export default class MLFlowClient {
     return result.files;
   }
 
-  async getArtifact(runId: string, artifactPath: string): Promise<unknown> {
+  async getArtifactJSON(runId: string, artifactPath: string): Promise<unknown> {
     const url = `${this.trackingUri}/get-artifact?path=${encodeURIComponent(artifactPath)}&run_uuid=${runId}`;
     const response = await ky.get(url);
     return response.json();
+  }
+
+  async getArtifactBinary(runId: string, artifactPath: string): Promise<ArrayBuffer> {
+    const url = `${this.trackingUri}/get-artifact?path=${encodeURIComponent(artifactPath)}&run_uuid=${runId}`;
+    const response = await ky.get(url);
+    return response.arrayBuffer();
   }
 
   async getTraceForRun(
