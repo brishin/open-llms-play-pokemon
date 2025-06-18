@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Common Commands
 
-- **Run the Pokemon player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 5 --headless` (Use the given arguments unless specified otherwise)
+- **Run the Pokemon player**: `uv run python -m open_llms_play_pokemon.agents.main_dspy --steps 5 --headless` (Use the given arguments unless specified otherwise)
 - **Install dependencies**: `uv sync` (project uses uv for dependency management)
 - **Run all tests**: `uv run pytest tests/ -v`
 - **Run specific test**: `uv run pytest tests/test_action_parser.py -v`
@@ -14,11 +14,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Type check**: `uv run pyright`
 - **Deploy LLM server**: `modal deploy server/llm_server.py`
 - **Test LLM server**: `modal run server/llm_server.py::test`
-- **Get MLflow experiments**: `python mlflow/get_experiments.py` (fetch recent experiments with table output)
-- **Get MLflow runs**: `python mlflow/get_runs.py --limit 5 --status FINISHED` (fetch recent successful runs)
-- **Get MLflow runs with traces**: `python mlflow/get_runs.py --limit 5 --show-traces` (fetch runs with trace summary)
-- **Get MLflow traces**: `python mlflow/get_traces.py --limit 10 --status OK` (fetch traces with detailed information)
-- **Get traces for specific run**: `python mlflow/get_traces.py --run-id <run_id> --show-spans` (detailed trace inspection for a run)
+- **Get MLflow experiments**: `uv run python mlflow/get_experiments.py` (fetch recent experiments with table output)
+- **Get MLflow runs**: `uv run python mlflow/get_runs.py --limit 5 --status FINISHED` (fetch recent successful runs)
+- **Get MLflow runs with traces**: `uv run python mlflow/get_runs.py --limit 5 --show-traces` (fetch runs with trace summary)
+- **Get MLflow traces**: `uv run python mlflow/get_traces.py --limit 10 --status OK` (fetch traces with detailed information)
+- **Get traces for specific run**: `uv run python mlflow/get_traces.py --run-id <run_id> --show-spans` (detailed trace inspection for a run)
 
 ## Architecture Overview
 
@@ -53,12 +53,12 @@ The `/game/` directory contains various saved states representing different prog
 ### MLflow Integration
 
 - **MLflow Server**: Runs on `http://localhost:8080` by default for experiment tracking
-- **Experiment Management**: Use `python mlflow/get_experiments.py` to fetch and display recent experiments
+- **Experiment Management**: Use `uv run python mlflow/get_experiments.py` to fetch and display recent experiments
   - Supports multiple output formats: `--format table|json|csv`
   - Configurable limits: `--limit N` (default: 3)
   - Custom tracking URI: `--tracking-uri http://custom:port`
   - Sorting options: `--sort-by creation_time|last_update_time|name`
-- **Run Management**: Use `python mlflow/get_runs.py` to fetch and display recent runs
+- **Run Management**: Use `uv run python mlflow/get_runs.py` to fetch and display recent runs
   - Filter by experiment: `--experiment-name "open-llms-play-pokemon"` or `--experiment-id ID`
   - Filter by status: `--status FINISHED|FAILED|RUNNING`
   - Sort by: `--sort-by start_time|end_time|status` with `--order asc|desc`
@@ -68,8 +68,8 @@ The `/game/` directory contains various saved states representing different prog
 
 When making changes to the DSPy implementation or game state system, follow this verification process:
 
-1. **Run the DSPy Player**: `python -m open_llms_play_pokemon.agents.main_dspy --steps 10 --headless`
-2. **Check Latest Runs**: `python mlflow/get_runs.py --limit 1 --status FINISHED`
+1. **Run the DSPy Player**: `uv run python -m open_llms_play_pokemon.agents.main_dspy --steps 10 --headless`
+2. **Check Latest Runs**: `uv run python mlflow/get_runs.py --limit 1 --status FINISHED`
 3. **Verify Artifacts**: Ensure proper artifact count and file sizes are maintained
 4. **Validate Data Structure**: Download and inspect game state JSON files to verify:
    - Dataclass structures are properly serialized
