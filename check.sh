@@ -7,6 +7,9 @@ set -e  # Exit on any error
 echo "🔧 Running code formatting..."
 uv run ruff format .
 
+echo "🔧 Running biome formatting and linting..."
+biome check --files-ignore-unknown=true --write
+
 echo "🔍 Running linting..."
 uv run ruff check . --fix
 

@@ -1,4 +1,4 @@
-import { useMemo, useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { BoxContainer } from '~/components/BoxContainer';
 import type { MLFlowSpan, MLFlowTraceArtifact } from '~/mflow/MLFlowTraces';
 import { PredictionStepCard } from './PredictionStepCard';

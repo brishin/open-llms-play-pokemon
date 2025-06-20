@@ -1,5 +1,5 @@
-import type { Route } from './+types/api.game-state';
 import MLFlowClient from '~/mflow/MLFlowClient';
+import type { Route } from './+types/api.game-state';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);

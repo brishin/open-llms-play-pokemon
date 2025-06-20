@@ -1,4 +1,4 @@
-import { type ReactNode, type ElementType } from 'react';
+import { type ElementType, type ReactNode } from 'react';
 import { twMerge } from 'tailwind-merge';
 
 interface BoxContainerProps {

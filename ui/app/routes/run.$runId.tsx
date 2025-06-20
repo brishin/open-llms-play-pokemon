@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import TracesNav from '~/components/ExperimentsNav';
-import type { Route } from './+types/run.$runId';
-import MLFlowClient from '~/mflow/MLFlowClient';
 import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
+import TracesNav from '~/components/ExperimentsNav';
+import { GameDataPane } from '~/components/GameDataPane';
 import { MetricsDisplay } from '~/components/MetricsDisplay';
 import { ScreenshotsPane } from '~/components/ScreenshotsPane';
-import { GameDataPane } from '~/components/GameDataPane';
 import TracePane from '~/components/trace/TracePane';
+import MLFlowClient from '~/mflow/MLFlowClient';
+import type { Route } from './+types/run.$runId';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const mlflow = new MLFlowClient('http://localhost:8080');

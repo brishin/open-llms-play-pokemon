@@ -1,5 +1,5 @@
-import type { Route } from './+types/api.mlflow.artifact';
 import MLFlowClient from '~/mflow/MLFlowClient';
+import type { Route } from './+types/api.mlflow.artifact';
 
 export async function loader({ request }: Route.LoaderArgs) {
   const url = new URL(request.url);
@@ -13,7 +13,7 @@ export async function loader({ request }: Route.LoaderArgs) {
   try {
     const mlflowClient = new MLFlowClient('http://localhost:8080');
     const artifact = await mlflowClient.getArtifactBinary(runId, artifactPath);
-    
+
     // Return the artifact as a binary response with appropriate headers
     return new Response(artifact, {
       headers: {

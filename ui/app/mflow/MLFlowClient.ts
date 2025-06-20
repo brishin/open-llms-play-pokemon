@@ -1,5 +1,5 @@
-import Mlflow from 'mlflow-js';
 import ky from 'ky';
+import Mlflow from 'mlflow-js';
 import type { MLFlowTraceArtifact } from './MLFlowTraces';
 
 /**
