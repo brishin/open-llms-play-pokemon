@@ -3,7 +3,9 @@ import type { Route } from './+types/captures.$captureId';
 import { getCaptureDetail, getCaptureListItems } from '~/captures/Captures';
 import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { AnnotatedScreenshot } from '~/components/AnnotatedScreenshot';
+import { TileDetailsBox } from '~/components/TileDetailsBox';
 import CapturesNav from '~/components/CapturesNav';
+import type { TileData } from '~/game-state/GameState.types';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const [captureDetail, captures] = await Promise.all([
@@ -21,6 +23,11 @@ export async function loader({ params }: Route.LoaderArgs) {
 export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
   const { captureDetail, captures } = loaderData;
   const [showAnnotations, setShowAnnotations] = useState(true);
+  const [hoveredTile, setHoveredTile] = useState<TileData | null>(null);
+  const [hoveredTilePosition, setHoveredTilePosition] = useState<{
+    x: number;
+    y: number;
+  } | null>(null);
 
   const formatGameStateStats = () => {
     const { gameState } = captureDetail;
@@ -46,6 +53,14 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
     }
 
     return stats;
+  };
+
+  const handleTileHover = (
+    tile: TileData | null,
+    position: { x: number; y: number } | null,
+  ) => {
+    setHoveredTile(tile);
+    setHoveredTilePosition(position);
   };
 
   return (
@@ -96,12 +111,17 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
                 maxWidth={800}
                 maxHeight={600}
                 className="max-w-full"
+                onTileHover={handleTileHover}
               />
             </BoxContainerContent>
           </BoxContainer>
 
           {/* Game state details */}
           <div className="flex flex-col gap-[0.25lh]">
+            <TileDetailsBox
+              hoveredTile={hoveredTile}
+              tilePosition={hoveredTilePosition}
+            />
             {/* Movement directions */}
             {captureDetail.gameState.directions_available && (
               <BoxContainer shear="top" title="Available Directions">

@@ -3,7 +3,7 @@
 import type Konva from 'konva';
 import { useEffect, useRef, useState } from 'react';
 import { Image as KonvaImage, Layer, Line, Rect, Stage, Text } from 'react-konva';
-import type { GameState } from '~/game-state/GameState.types';
+import type { GameState, TileData } from '~/game-state/GameState.types';
 
 interface AnnotatedScreenshotProps {
   src: string;
@@ -14,6 +14,10 @@ interface AnnotatedScreenshotProps {
   onClick?: () => void;
   gameState?: GameState;
   showAnnotations?: boolean;
+  onTileHover?: (
+    tile: TileData | null,
+    position: { x: number; y: number } | null,
+  ) => void;
 }
 
 export function AnnotatedScreenshot({
@@ -25,6 +29,7 @@ export function AnnotatedScreenshot({
   onClick,
   gameState,
   showAnnotations = true,
+  onTileHover,
 }: AnnotatedScreenshotProps) {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -102,6 +107,57 @@ export function AnnotatedScreenshot({
       resizeObserver.disconnect();
     };
   }, [image, maxWidth, maxHeight]);
+
+  const getTileFromPosition = (x: number, y: number) => {
+    if (!gameState?.tile_matrix || !image) return null;
+
+    const { tiles, width, height } = gameState.tile_matrix;
+
+    // GameBoy screen is 160x144 pixels, typically scaled up
+    const gameWidth = 160;
+    const gameHeight = 144;
+    const tileSize = 8; // Each tile is 8x8 pixels on GameBoy
+
+    // Calculate scale factors
+    const scaleX = dimensions.width / gameWidth;
+    const scaleY = dimensions.height / gameHeight;
+
+    // Convert screen coordinates to tile coordinates
+    const tileX = Math.floor(x / (tileSize * scaleX));
+    const tileY = Math.floor(y / (tileSize * scaleY));
+
+    // Check bounds
+    if (tileX < 0 || tileX >= width || tileY < 0 || tileY >= height) {
+      return null;
+    }
+
+    // Get the tile data
+    const tile = tiles[tileY]?.[tileX];
+    return tile ? { tile, position: { x: tileX, y: tileY } } : null;
+  };
+
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!onTileHover) return;
+
+    const stage = e.target.getStage();
+    if (!stage) return;
+
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    const tileInfo = getTileFromPosition(pointer.x, pointer.y);
+    if (tileInfo) {
+      onTileHover(tileInfo.tile, tileInfo.position);
+    } else {
+      onTileHover(null, null);
+    }
+  };
+
+  const handleMouseLeave = () => {
+    if (onTileHover) {
+      onTileHover(null, null);
+    }
+  };
 
   const renderWalkabilityOverlay = () => {
     if (!gameState?.tile_matrix || !image) return null;
@@ -312,6 +368,8 @@ export function AnnotatedScreenshot({
       <Stage
         width={dimensions.width}
         height={dimensions.height}
+        onMouseMove={handleMouseMove}
+        onMouseLeave={handleMouseLeave}
         style={{
           cursor: onClick ? 'pointer' : 'default',
           maxWidth: '100%',
