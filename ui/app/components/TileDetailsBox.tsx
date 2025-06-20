@@ -1,5 +1,5 @@
-import { BoxContainer, BoxContainerContent } from './BoxContainer';
 import type { TileData } from '~/game-state/GameState.types';
+import { BoxContainer, BoxContainerContent } from './BoxContainer';
 
 interface TileDetailsBoxProps {
   hoveredTile: TileData | null;
@@ -11,7 +11,7 @@ export function TileDetailsBox({ hoveredTile, tilePosition }: TileDetailsBoxProp
     return (
       <BoxContainer shear="top" title="Tile Details">
         <BoxContainerContent>
-          <div className="text-gray-500">
+          <div className="text-muted">
             Hover over a tile in the screenshot to see details
           </div>
         </BoxContainerContent>

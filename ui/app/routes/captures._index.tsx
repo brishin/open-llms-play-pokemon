@@ -1,6 +1,6 @@
-import type { Route } from './+types/captures._index';
-import { getCaptureListItems, capturesDirectoryExists } from '~/captures/Captures';
+import { capturesDirectoryExists, getCaptureListItems } from '~/captures/Captures';
 import CapturesNav from '~/components/CapturesNav';
+import type { Route } from './+types/captures._index';
 
 export async function loader() {
   if (!capturesDirectoryExists()) {

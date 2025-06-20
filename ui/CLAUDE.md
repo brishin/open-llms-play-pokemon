@@ -32,7 +32,7 @@ This directory contains a React Router v7 web application that provides a user i
 
 - **Start development server**: `pnpm dev` (IMPORTANT: Do not run this command automatically - let the user run it manually)
 - **Build for production**: `pnpm build`
-- **Run all code quality checks**: `./check.sh` (format, lint, typecheck)
+- **Run all code quality checks**: `./check.sh` (format, lint, typecheck. Make sure to run this command in the root, not in the ui directory)
 - **Start production server**: `pnpm start`
 
 ## Dependencies

@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import type { Route } from './+types/captures.$captureId';
 import { getCaptureDetail, getCaptureListItems } from '~/captures/Captures';
-import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import { AnnotatedScreenshot } from '~/components/AnnotatedScreenshot';
-import { TileDetailsBox } from '~/components/TileDetailsBox';
+import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import CapturesNav from '~/components/CapturesNav';
+import { TileDetailsBox } from '~/components/TileDetailsBox';
 import type { TileData } from '~/game-state/GameState.types';
+import type { Route } from './+types/captures.$captureId';
 
 export async function loader({ params }: Route.LoaderArgs) {
   const [captureDetail, captures] = await Promise.all([
@@ -71,7 +71,7 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
         <BoxContainer shear="top" title={`Capture ${captureDetail.captureId}`}>
           <BoxContainerContent>
             <div className="flex justify-between items-center">
-              <div className="text-gray-600">
+              <div className="text-muted">
                 {new Date(
                   captureDetail.timestamp.replace(
                     /(\d{4})(\d{2})(\d{2})_(\d{2})(\d{2})(\d{2})/,
@@ -131,7 +131,7 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
                       ([direction, available]) => (
                         <div
                           key={direction}
-                          className={`flex items-center gap-2 ${available ? 'text-green-600' : 'text-red-600'}`}
+                          className={`flex items-center gap-2 ${available ? 'text-success' : 'text-error'}`}
                         >
                           <span>{available ? '✓' : '✗'}</span>
                           <span className="capitalize">{direction}</span>

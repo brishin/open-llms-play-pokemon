@@ -1,7 +1,7 @@
 import { promises as fs, existsSync } from 'node:fs';
 import { join } from 'node:path';
-import type { CaptureFile, CaptureListItem, CaptureDetail } from './Capture.types';
 import type { GameState } from '~/game-state/GameState.types';
+import type { CaptureDetail, CaptureFile, CaptureListItem } from './Capture.types';
 
 const CAPTURES_DIR = join(process.cwd(), '..', 'captures');
 
