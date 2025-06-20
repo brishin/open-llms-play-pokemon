@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Stage, Layer, Image as KonvaImage, Rect } from 'react-konva';
+import { Stage, Layer, Image as KonvaImage, Rect, Line, Text } from 'react-konva';
 import Konva from 'konva';
 import type { GameState } from '~/game-state/GameState.types';
 
@@ -129,37 +129,45 @@ export function AnnotatedScreenshot({
         const tileWidth = tileSize * scaleX;
         const tileHeight = tileSize * scaleY;
 
-        // Determine color based on walkability
+        // Determine color based on walkability (original logic)
         let fillColor = 'transparent';
-        let strokeColor = 'transparent';
-
         if (tile.is_walkable) {
           fillColor = 'rgba(0, 255, 0, 0.3)'; // Green for walkable
-          strokeColor = 'rgba(0, 255, 0, 0.8)';
         } else {
           fillColor = 'rgba(255, 0, 0, 0.3)'; // Red for blocked
-          strokeColor = 'rgba(255, 0, 0, 0.8)';
         }
 
-        // Special colors for special tiles
+        // Collect special tile labels (for text overlays)
+        const tileLabels: string[] = [];
+        if (tile.has_sign) tileLabels.push('S');
+        if (tile.has_bookshelf) tileLabels.push('B');
+        if (tile.strength_boulder) tileLabels.push('R');
+        if (tile.cuttable_tree) tileLabels.push('T');
+        if (tile.pc_accessible) tileLabels.push('PC');
+        if (tile.hidden_item_id !== null) tileLabels.push('H');
+        if (tile.game_corner_tile) tileLabels.push('G');
+        if (tile.is_fly_destination) tileLabels.push('F');
+
+        // Special colors for special tiles (original priority)
         if (tile.is_encounter_tile) {
           fillColor = 'rgba(255, 255, 0, 0.4)'; // Yellow for grass/encounters
-          strokeColor = 'rgba(255, 255, 0, 0.9)';
         }
         if (tile.is_warp_tile) {
           fillColor = 'rgba(0, 0, 255, 0.4)'; // Blue for doors/warps
-          strokeColor = 'rgba(0, 0, 255, 0.9)';
         }
         if (tile.is_ledge_tile) {
           fillColor = 'rgba(255, 165, 0, 0.4)'; // Orange for ledges
-          strokeColor = 'rgba(255, 165, 0, 0.9)';
         }
 
-        // Highlight player position (2x2 tiles starting at 8,9)
+        // Special stroke for trainer sight lines
+        if (tile.trainer_sight_line) {
+          fillColor = 'rgba(255, 0, 0, 1.0)';
+        }
+
+        // Highlight player position (2x2 tiles starting at 8,9) - highest priority
         const isPlayerTile = x >= 8 && x <= 9 && y >= 8 && y <= 9;
         if (isPlayerTile) {
           fillColor = 'rgba(255, 0, 255, 0.6)'; // Magenta for player position
-          strokeColor = 'rgba(255, 0, 255, 1.0)';
         }
 
         overlays.push(
@@ -170,10 +178,103 @@ export function AnnotatedScreenshot({
             width={tileWidth}
             height={tileHeight}
             fill={fillColor}
-            stroke={strokeColor}
-            strokeWidth={0.5}
+            stroke={`rgba(0, 0, 0, 0.2)`}
+            strokeWidth={1}
           />,
         );
+
+        // Add text labels for special tiles
+        if (tileLabels.length > 0) {
+          const labelText = tileLabels.join(',');
+          const fontSize = Math.min(tileWidth, tileHeight) * 0.4;
+
+          overlays.push(
+            <Text
+              key={`tile-label-${x}-${y}`}
+              x={pixelX}
+              y={pixelY}
+              width={tileWidth}
+              height={tileHeight}
+              text={labelText}
+              fontSize={fontSize}
+              fill="black"
+              stroke="white"
+              strokeWidth={0.2}
+              align="center"
+              verticalAlign="middle"
+              fontFamily="monospace"
+              fontStyle="bold"
+            />,
+          );
+        }
+
+        // Add ledge direction arrows
+        if (tile.is_ledge_tile && tile.ledge_direction) {
+          const arrowCenterX = pixelX + tileWidth / 2;
+          const arrowCenterY = pixelY + tileHeight / 2;
+          const arrowSize = Math.min(tileWidth, tileHeight) * 0.3;
+
+          let arrowPoints: number[] = [];
+
+          // Create triangle points based on direction
+          switch (tile.ledge_direction.toLowerCase()) {
+            case 'up':
+            case 'north':
+              arrowPoints = [
+                arrowCenterX,
+                arrowCenterY - arrowSize,
+                arrowCenterX - arrowSize * 0.6,
+                arrowCenterY + arrowSize * 0.3,
+                arrowCenterX + arrowSize * 0.6,
+                arrowCenterY + arrowSize * 0.3,
+              ];
+              break;
+            case 'down':
+            case 'south':
+              arrowPoints = [
+                arrowCenterX,
+                arrowCenterY + arrowSize,
+                arrowCenterX - arrowSize * 0.6,
+                arrowCenterY - arrowSize * 0.3,
+                arrowCenterX + arrowSize * 0.6,
+                arrowCenterY - arrowSize * 0.3,
+              ];
+              break;
+            case 'left':
+            case 'west':
+              arrowPoints = [
+                arrowCenterX - arrowSize,
+                arrowCenterY,
+                arrowCenterX + arrowSize * 0.3,
+                arrowCenterY - arrowSize * 0.6,
+                arrowCenterX + arrowSize * 0.3,
+                arrowCenterY + arrowSize * 0.6,
+              ];
+              break;
+            case 'right':
+            case 'east':
+              arrowPoints = [
+                arrowCenterX + arrowSize,
+                arrowCenterY,
+                arrowCenterX - arrowSize * 0.3,
+                arrowCenterY - arrowSize * 0.6,
+                arrowCenterX - arrowSize * 0.3,
+                arrowCenterY + arrowSize * 0.6,
+              ];
+              break;
+          }
+
+          if (arrowPoints.length > 0) {
+            overlays.push(
+              <Line
+                key={`ledge-arrow-${x}-${y}`}
+                points={arrowPoints}
+                fill="rgba(0, 0, 0, 0.8)"
+                closed={true}
+              />,
+            );
+          }
+        }
       }
     }
 
@@ -192,12 +293,21 @@ export function AnnotatedScreenshot({
     );
   }
 
+  const containerProps = onClick
+    ? {
+        onClick,
+        onKeyDown: (e: React.KeyboardEvent) => e.key === 'Enter' && onClick(),
+        role: 'button' as const,
+        tabIndex: 0,
+      }
+    : {};
+
   return (
     <div
       ref={containerRef}
       className={`${className} flex items-center justify-center`}
-      onClick={onClick}
       style={{ width: '100%', height: 'auto' }}
+      {...containerProps}
     >
       <Stage
         width={dimensions.width}
