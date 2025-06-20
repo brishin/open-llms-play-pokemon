@@ -33,7 +33,7 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
     <BoxContainer
       as="nav"
       shear="top"
-      className="min-w-[16ch] h-full flex flex-col"
+      className="min-w-[20ch] h-full flex flex-col"
       title={`Runs (${runs.length})`}
     >
       <div className="my-[1lh] px-[1ch] flex-1 min-h-0">
@@ -44,7 +44,7 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
               const partyCount = getLatestMetric(run, 'party_count');
 
               return (
-                <li key={run.info.run_id} className="border-b border-subtle pb-[0.5lh]">
+                <div key={run.info.run_id} className="border-b border-subtle">
                   <NavLink
                     to={`/run/${run.info.run_id}`}
                     className={({ isActive }) =>
@@ -72,7 +72,7 @@ export default function ExperimentsNav({ runs }: { runs: MLFlowRun[] }) {
                         .humanize(true)}
                     </div>
                   </NavLink>
-                </li>
+                </div>
               );
             })}
           </ul>

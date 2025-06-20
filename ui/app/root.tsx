@@ -1,6 +1,7 @@
 import {
   Links,
   Meta,
+  NavLink,
   Outlet,
   Scripts,
   ScrollRestoration,
@@ -23,10 +24,16 @@ export function Layout({ children }: { children: React.ReactNode }) {
       <body className="px-[1ch] flex flex-col">
         <BoxContainer as="nav" className="flex justify-between flex-row px-[2ch]">
           <p>Open LLMs Play Pokemon</p>
-          <div className="flex gap-2">
-            <a href="/" data-active="true">
+          <div className="flex gap-[2ch]">
+            <a href="/">
               <span>Runs</span>
             </a>
+            <NavLink
+              to="/captures"
+              className={({ isActive }) => (isActive ? 'font-bold' : '')}
+            >
+              <span>Captures</span>
+            </NavLink>
           </div>
         </BoxContainer>
         {children}

@@ -73,6 +73,7 @@ The UI displays comprehensive data logged by the DSPy Pokemon agent (`main_dspy.
 ### Design
 - The UI is a terminal UI (TUI) rendered to the web.
 - Use font weights instead of font sizes to maintain the monospace console like text layout.
+- Do NOT change font sizes for text. (Aka don't use `className="text-sm"` or similar.)
 
 ### CSS Units
 - Use `ch` units for x-axis sizing (widths, horizontal padding/gaps)
