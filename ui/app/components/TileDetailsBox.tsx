@@ -47,37 +47,66 @@ export function TileDetailsBox({ hoveredTile, tilePosition }: TileDetailsBoxProp
   return (
     <BoxContainer shear="top" title="Tile Details">
       <BoxContainerContent>
-        <div className="space-y-[0.5lh]">
+        <div>
           <div className="flex gap-[4ch]">
-            <div>
+            <div className="flex-1">
               <strong>Position:</strong> ({tilePosition.x}, {tilePosition.y})
             </div>
-            <div>
+            <div className="flex-1">
               <strong>Type:</strong> {formatTileType(hoveredTile)}
             </div>
           </div>
-          
+
+          <div className="flex gap-[4ch]">
+            <div className="flex-1">
+              <strong>Tile ID:</strong> {hoveredTile.tile_id}
+            </div>
+            <div className="flex-1">
+              <strong>Raw Type:</strong> {hoveredTile.tile_type}
+            </div>
+          </div>
+
+          {(hoveredTile.map_x !== hoveredTile.x ||
+            hoveredTile.map_y !== hoveredTile.y) && (
+            <div className="flex-1">
+              <strong>Map Position:</strong> ({hoveredTile.map_x}, {hoveredTile.map_y})
+            </div>
+          )}
+
+          {hoveredTile.hidden_item_id !== null && (
+            <div className="flex gap-[4ch]">
+              <div className="flex-1">
+                <strong>Hidden Item ID:</strong> {hoveredTile.hidden_item_id}
+              </div>
+              {hoveredTile.requires_itemfinder && (
+                <div className="flex-1">
+                  <strong>Needs Itemfinder:</strong> Yes
+                </div>
+              )}
+            </div>
+          )}
+
           {specialProps.length > 0 && (
-            <div>
+            <div className="flex-1">
               <strong>Properties:</strong> {specialProps.join(', ')}
             </div>
           )}
 
           {hoveredTile.warp_destination_map !== null && (
-            <div>
-              <strong>Warp To:</strong> Map {hoveredTile.warp_destination_map} 
-              ({hoveredTile.warp_destination_x}, {hoveredTile.warp_destination_y})
+            <div className="flex-1">
+              <strong>Warp To:</strong> Map {hoveredTile.warp_destination_map}(
+              {hoveredTile.warp_destination_x}, {hoveredTile.warp_destination_y})
             </div>
           )}
 
           {hoveredTile.trainer_id !== null && (
-            <div>
+            <div className="flex-1">
               <strong>Trainer ID:</strong> {hoveredTile.trainer_id}
             </div>
           )}
 
           {hoveredTile.water_current_direction && (
-            <div>
+            <div className="flex-1">
               <strong>Water Current:</strong> {hoveredTile.water_current_direction}
             </div>
           )}
