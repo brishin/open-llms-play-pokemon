@@ -35,48 +35,48 @@
 }
 
 @layer utils {
-	[box-="square"].bg-background1 {
-		--box-border-color: var(--background1);
-	}
+  [box-="square"].bg-background1 {
+    --box-border-color: var(--background1);
+  }
 
-	/* WebTUI Color Utility Classes */
-	.text-success {
-		color: var(--green, #22c55e);
-	}
-
-	.text-error {
-		color: var(--red, #ef4444);
-	}
-
-	.text-info {
-		color: var(--blue, #3b82f6);
-	}
-
-	.text-muted {
-		color: var(--foreground2);
-	}
-
-	.text-subtle {
-		color: var(--foreground1);
-	}
-
-	.bg-hover {
-		background-color: var(--background2);
-	}
-
-	.bg-active {
-		background-color: var(--background3);
-	}
-
-	.bg-surface {
-		background-color: var(--background1);
-	}
-
-	.border-default {
-		border-color: var(--box-border-color);
-	}
-
-	.border-subtle {
-		border-color: var(--background2);
-	}
+  /* WebTUI Color Utility Classes */
+  .text-success {
+    color: var(--green, #22c55e);
+  }
+  
+  .text-error {
+    color: var(--red, #ef4444);
+  }
+  
+  .text-info {
+    color: var(--blue, #3b82f6);
+  }
+  
+  .text-muted {
+    color: var(--foreground2);
+  }
+  
+  .text-subtle {
+    color: var(--foreground1);
+  }
+  
+  .bg-hover {
+    background-color: var(--background2);
+  }
+  
+  .bg-active {
+    background-color: var(--background3);
+  }
+  
+  .bg-surface {
+    background-color: var(--background1);
+  }
+  
+  .border-default {
+    border-color: var(--box-border-color);
+  }
+  
+  .border-subtle {
+    border-color: var(--background2);
+  }
 }
