@@ -190,15 +190,17 @@ def test_memory_reader_utility_methods():
     """Test the remaining utility methods in PokemonRedMemoryReader."""
     reader = PokemonRedMemoryReader(Mock())
 
-    # Test directions checking
+    # Test directions checking with Pokemon Red's bottom-left tile behavior
+    # Player top-left at (8,9), so bottom-left property check position is (8,10)
     mock_tiles = [
-        Mock(x=10, y=8, is_walkable=True),  # North of player (10, 9)
-        Mock(x=10, y=10, is_walkable=False),  # South of player
-        Mock(x=11, y=9, is_walkable=True),  # East of player
-        Mock(x=9, y=9, is_walkable=True),  # West of player
+        Mock(x=8, y=9, is_walkable=True),  # North of bottom-left (8,10)
+        Mock(x=8, y=11, is_walkable=False),  # South of bottom-left (8,10)
+        Mock(x=9, y=10, is_walkable=True),  # East of bottom-left (8,10)
+        Mock(x=7, y=10, is_walkable=True),  # West of bottom-left (8,10)
     ]
 
-    directions = reader._check_immediate_directions(mock_tiles, 10, 9)
+    # Pass player top-left position (8,9), method calculates bottom-left (8,10) internally
+    directions = reader._check_immediate_directions(mock_tiles, 8, 9)
     assert directions.north is True
     assert directions.south is False
     assert directions.east is True
