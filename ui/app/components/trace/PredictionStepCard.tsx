@@ -39,13 +39,28 @@ export function PredictionStepCard({
       ? Math.round((span.end_time - span.start_time) / 1000000)
       : null;
 
+  const PredictionStepContainer = ({ children }: { children: React.ReactNode }) => {
+    return (
+      <div
+        className={twMerge(
+          'border border-surface0 px-[1ch] py-[1lh]',
+          isAfterCurrentStep && 'opacity-40',
+          isCurrentStep && 'scroll-mt-[2lh]',
+        )}
+        id={`step-${stepNumber}`}
+      >
+        {children}
+      </div>
+    );
+  };
+
   if (!prediction) {
     return (
-      <div className="border border-surface0 p-[1ch] mb-[1lh]">
+      <PredictionStepContainer>
         <div className="text-subtext0">
           Step {stepNumber}: Unable to parse prediction data
         </div>
-      </div>
+      </PredictionStepContainer>
     );
   }
 
@@ -60,15 +75,8 @@ export function PredictionStepCard({
   };
 
   return (
-    <div
-      className={twMerge(
-        'border border-surface0 px-[1ch] mb-[1lh] py-[1lh]',
-        isAfterCurrentStep && 'opacity-40',
-        isCurrentStep && 'scroll-mt-[2lh]',
-      )}
-      id={`step-${stepNumber}`}
-    >
-      <div className="flex justify-between items-center mb-[1lh]">
+    <PredictionStepContainer>
+      <div className="flex justify-between items-center">
         <h3 className="font-semibold text-text">Step {stepNumber}</h3>
         <div className="text-subtext0">
           {duration && `${duration}ms`}
@@ -87,6 +95,6 @@ export function PredictionStepCard({
           {formatToolAction(prediction.next_tool_name, prediction.next_tool_args)}
         </span>
       </div>
-    </div>
+    </PredictionStepContainer>
   );
 }
