@@ -17,6 +17,7 @@ from .data.tile_data_constants import (
     GRASS_TILES,
     LEDGE_TILES,
     TREE_TILES,
+    WARP_TILES,
     WATER_TILES,
     TilesetID,
 )
@@ -255,6 +256,10 @@ def classify_tile_type(
     if tileset_id in WATER_TILES and tile_id in WATER_TILES[tileset_id]:
         return TileType.WATER
 
+    # Check for warp tiles (including doors) - prioritize over road classification
+    if tileset_id in WARP_TILES and tile_id in WARP_TILES[tileset_id]:
+        return TileType.WARP
+
     if tileset_id in DOOR_TILES and tile_id in DOOR_TILES[tileset_id]:
         return TileType.WARP
 
@@ -268,8 +273,8 @@ def classify_tile_type(
         return TileType.TREE
 
     if is_walkable:
-        # Further classify walkable tiles
-        if 20 <= tile_id <= 30:  # Road tile range
+        # Further classify walkable tiles - road classification comes after warp check
+        if 20 <= tile_id <= 30:  # Road tile range (but warp tiles take priority)
             return TileType.ROAD
         else:
             return TileType.WALKABLE

@@ -215,3 +215,4 @@ with open("game/init.state", "rb") as f:
 ✅ **Type Safety**: Full type annotations and enum usage
 ✅ **Performance**: Optimized batch processing and caching
 ✅ **Documentation**: Clear interfaces and usage examples
+✅ **Warp System**: Accurate warp tile classification matching Pokemon Red assembly logic

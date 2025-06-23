@@ -262,32 +262,58 @@ def format_game_state_text(game_state: dict[str, Any]) -> str:
                             if tile.get("trainer_sight_line"):
                                 interaction_options.append("Trainer nearby")
 
-            # Determine dominant environment
-            if tile_counts:
-                dominant_terrain = []
-                for tile_type, count in tile_counts.items():
-                    if count / total_tiles > 0.1:  # More than 10% of visible area
-                        if tile_type == "grass":
-                            dominant_terrain.append("Tall grass (wild Pokemon)")
-                        elif tile_type == "water":
-                            dominant_terrain.append("Water (surf needed)")
-                        elif tile_type == "ledge":
-                            dominant_terrain.append("Ledges (one-way)")
-                        elif tile_type != "walkable":
-                            dominant_terrain.append(tile_type.title())
+            # Show interaction options if any exist
+            if interaction_options:
+                lines.append("ENVIRONMENT:")
+                unique_interactions = list(
+                    dict.fromkeys(interaction_options)
+                )  # Remove duplicates
+                lines.append(
+                    f"Actions: {', '.join(unique_interactions[:5])}"
+                )  # Limit to 5 most important
+                lines.append("")
 
-                if dominant_terrain or interaction_options:
-                    lines.append("ENVIRONMENT:")
-                    if dominant_terrain:
-                        lines.append(f"Terrain: {', '.join(dominant_terrain)}")
-                    if interaction_options:
-                        unique_interactions = list(
-                            dict.fromkeys(interaction_options)
-                        )  # Remove duplicates
-                        lines.append(
-                            f"Actions: {', '.join(unique_interactions[:5])}"
-                        )  # Limit to 5 most important
-                    lines.append("")
+    # Walkable tile grid visualization (for collision detection debugging)
+    # Show only bottom-left tile info for each 2x2 grid area to match Pokemon Red's sprite behavior
+    tile_matrix = game_state.get("tile_matrix")
+    if tile_matrix and isinstance(tile_matrix, dict):
+        tiles = tile_matrix.get("tiles", [])
+        player_x = game_state.get("player_x", -1)
+        player_y = game_state.get("player_y", -1)
+        if tiles and len(tiles) == 18:  # 18 rows
+            lines.append(
+                "WALKABLE GRID (2x2 areas, @ = player, . = walkable, X = blocked, W = warp):"
+            )
+            # Process every 2x2 grid area, showing only bottom-left tile info
+            for grid_y in range(0, 18, 2):  # Step by 2 for 2x2 areas
+                grid_line = ""
+                for grid_x in range(0, 20, 2):  # Step by 2 for 2x2 areas
+                    # Bottom-left position of this 2x2 area
+                    bottom_left_x = grid_x
+                    bottom_left_y = grid_y + 1
+
+                    # Check if this 2x2 area contains the player sprite (at 8,9-9,10)
+                    if grid_x == 8 and grid_y == 8:  # Player's 2x2 area
+                        grid_line += "@ "
+                    elif (
+                        bottom_left_y < len(tiles)
+                        and bottom_left_x < len(tiles[bottom_left_y])
+                        and isinstance(tiles[bottom_left_y][bottom_left_x], dict)
+                    ):
+                        # Use bottom-left tile's properties for the entire 2x2 area
+                        tile = tiles[bottom_left_y][bottom_left_x]
+
+                        # Check for warp tile first (priority over walkable)
+                        if tile.get("is_warp_tile", False):
+                            grid_line += "W "
+                        elif tile.get("is_walkable", False):
+                            grid_line += ". "
+                        else:
+                            grid_line += "X "
+                    else:
+                        grid_line += "? "
+                lines.append(grid_line)
+            lines.append("")
 
     # Map loading status - only show if actively transitioning (1-3 are transition states)
     map_loading = game_state.get("map_loading_status")

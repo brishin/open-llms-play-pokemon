@@ -19,6 +19,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - **Get MLflow runs with traces**: `uv run python mlflow/get_runs.py --limit 5 --show-traces` (fetch runs with trace summary)
 - **Get MLflow traces**: `uv run python mlflow/get_traces.py --limit 10 --status OK` (fetch traces with detailed information)
 - **Get traces for specific run**: `uv run python mlflow/get_traces.py --run-id <run_id> --show-spans` (detailed trace inspection for a run)
+- **Debug game state parsing**: `uv run python -m open_llms_play_pokemon.mcp_server get_game_state_text <state_file>` (test game state parsing without MCP server caching)
+- **Debug game state JSON**: `uv run python -m open_llms_play_pokemon.mcp_server get_game_state_json <state_file>` (output JSON format directly)
 
 ## Architecture Overview
 

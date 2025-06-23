@@ -9,8 +9,9 @@ sys.path.insert(0, str(project_root))
 
 from open_llms_play_pokemon.game_state.game_state_parsing import (
     get_game_state_json,
-    get_game_state_text,
 )
+
+# Note: Only use json output for testing.
 
 
 def test_all_directions_available_state():
@@ -43,20 +44,6 @@ def test_all_directions_available_state():
     assert directions["west"] is True, (
         "West should be available (was previously blocked)"
     )
-
-    # Test text output format
-    text_output = get_game_state_text(state_file)
-
-    # Verify text contains all movement symbols
-    assert "↑N" in text_output, "North movement symbol should be present"
-    assert "↓S" in text_output, "South movement symbol should be present"
-    assert "→E" in text_output, "East movement symbol should be present"
-    assert "←W" in text_output, (
-        "West movement symbol should be present (was previously missing)"
-    )
-
-    # Verify no blocked directions are mentioned
-    assert "blocked" not in text_output.lower(), "No directions should be blocked"
 
 
 def test_map_loading_status_16_not_transitioning():

@@ -1,9 +1,13 @@
+import logging
+
 from pyboy import PyBoyMemoryView
 
 from .data.memory_addresses import MemoryAddresses
 from .data.tile_data_constants import TilesetID
 from .tile_data import TileData, classify_tile_type
 from .tile_property_detector import TilePropertyDetector
+
+logger = logging.getLogger(__name__)
 
 
 def get_tile_id(memory_view: PyBoyMemoryView, x: int, y: int) -> int:
@@ -69,7 +73,8 @@ def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
 
         # Validate pointer is reasonable (should be in ROM space)
         if collision_ptr < 0x4000 or collision_ptr > 0x7FFF:
-            raise ValueError(f"Invalid collision pointer: 0x{collision_ptr:04X}")
+            # Fallback to hardcoded collision tables when pointer is invalid
+            return _fallback_collision_check(memory_view, tile_id, logger)
 
         # Read collision table until FF termination
         # NOTE: Pokemon Red collision tables contain WALKABLE tiles, not blocked tiles
@@ -81,14 +86,200 @@ def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
             if collision_tile == tile_id:
                 return False  # Tile is in collision table (walkable)
             offset += 1
-            if offset > 100:  # Safety limit
-                break
+            if offset > 100:  # Safety limit to prevent infinite loops
+                logger.warning(
+                    f"Collision table too long, using fallback for tile {tile_id}"
+                )
+                return _fallback_collision_check(memory_view, tile_id, logger)
 
         return True  # Tile not in collision table (blocked)
+    except Exception as e:
+        logger.warning(f"Failed to read collision data for tile {tile_id}: {e}")
+        return _fallback_collision_check(memory_view, tile_id, logger)
+
+
+def _fallback_collision_check(
+    memory_view: PyBoyMemoryView, tile_id: int, logger
+) -> bool:
+    """
+    Fallback collision detection using hardcoded tileset collision tables.
+    Based on Pokemon Red source code collision tables.
+    """
+    try:
+        current_tileset = memory_view[MemoryAddresses.current_tileset]
     except Exception:
-        # Fallback: assume tiles are walkable unless we're certain they're blocked
-        # This prevents false blocking of valid movement paths
-        return False  # Default to walkable for movement analysis
+        logger.warning(f"Could not read tileset, assuming tile {tile_id} is blocked")
+        return True
+
+    # Hardcoded collision tables from Pokemon Red source (walkable tiles for each tileset)
+    # These correspond to the collision_tile_ids.asm file and tileset_headers.asm ordering
+    tileset_walkable_tiles = {
+        0: [
+            0x00,
+            0x10,
+            0x1B,
+            0x20,
+            0x21,
+            0x23,
+            0x2C,
+            0x2D,
+            0x2E,
+            0x30,
+            0x31,
+            0x33,
+            0x39,
+            0x3C,
+            0x3E,
+            0x52,
+            0x54,
+            0x58,
+            0x5B,
+        ],  # Overworld_Coll
+        1: [0x01, 0x02, 0x03, 0x11, 0x12, 0x13, 0x14, 0x1C, 0x1A],  # RedsHouse1_Coll
+        2: [0x11, 0x1A, 0x1C, 0x3C, 0x5E],  # Mart_Coll
+        3: [
+            0x1E,
+            0x20,
+            0x2E,
+            0x30,
+            0x34,
+            0x37,
+            0x39,
+            0x3A,
+            0x40,
+            0x51,
+            0x52,
+            0x5A,
+            0x5C,
+            0x5E,
+            0x5F,
+        ],  # Forest_Coll
+        4: [
+            0x01,
+            0x02,
+            0x03,
+            0x11,
+            0x12,
+            0x13,
+            0x14,
+            0x1C,
+            0x1A,
+        ],  # RedsHouse2_Coll (same as RedsHouse1_Coll)
+        5: [
+            0x11,
+            0x16,
+            0x19,
+            0x2B,
+            0x3C,
+            0x3D,
+            0x3F,
+            0x4A,
+            0x4C,
+            0x4D,
+            0x03,
+        ],  # Dojo_Coll
+        6: [0x11, 0x1A, 0x1C, 0x3C, 0x5E],  # Pokecenter_Coll (same as Mart_Coll)
+        7: [
+            0x11,
+            0x16,
+            0x19,
+            0x2B,
+            0x3C,
+            0x3D,
+            0x3F,
+            0x4A,
+            0x4C,
+            0x4D,
+            0x03,
+        ],  # Gym_Coll (same as Dojo_Coll)
+        8: [0x01, 0x12, 0x14, 0x28, 0x32, 0x37, 0x44, 0x54, 0x5C],  # House_Coll
+        9: [
+            0x01,
+            0x12,
+            0x14,
+            0x1A,
+            0x1C,
+            0x37,
+            0x38,
+            0x3B,
+            0x3C,
+            0x5E,
+        ],  # ForestGate_Coll
+        10: [
+            0x01,
+            0x12,
+            0x14,
+            0x1A,
+            0x1C,
+            0x37,
+            0x38,
+            0x3B,
+            0x3C,
+            0x5E,
+        ],  # Museum_Coll (same as ForestGate_Coll)
+        11: [0x0B, 0x0C, 0x13, 0x15, 0x18],  # Underground_Coll
+        12: [
+            0x01,
+            0x12,
+            0x14,
+            0x1A,
+            0x1C,
+            0x37,
+            0x38,
+            0x3B,
+            0x3C,
+            0x5E,
+        ],  # Gate_Coll (same as ForestGate_Coll)
+        13: [0x04, 0x0D, 0x17, 0x1D, 0x1E, 0x23, 0x34, 0x37, 0x39, 0x4A],  # Ship_Coll
+        14: [0x0A, 0x1A, 0x32, 0x3B],  # ShipPort_Coll
+        15: [0x01, 0x10, 0x13, 0x1B, 0x22, 0x42, 0x52],  # Cemetery_Coll
+        16: [0x04, 0x0F, 0x15, 0x1F, 0x3B, 0x45, 0x47, 0x55, 0x56],  # Interior_Coll
+        17: [0x05, 0x15, 0x18, 0x1A, 0x20, 0x21, 0x22, 0x2A, 0x2D, 0x30],  # Cavern_Coll
+        18: [0x14, 0x17, 0x1A, 0x1C, 0x20, 0x38, 0x45],  # Lobby_Coll
+        19: [0x01, 0x05, 0x11, 0x12, 0x14, 0x1A, 0x1C, 0x2C, 0x53],  # Mansion_Coll
+        20: [0x0C, 0x26, 0x16, 0x1E, 0x34, 0x37],  # Lab_Coll
+        21: [
+            0x0F,
+            0x1A,
+            0x1F,
+            0x26,
+            0x28,
+            0x29,
+            0x2C,
+            0x2D,
+            0x2E,
+            0x2F,
+            0x41,
+        ],  # Club_Coll
+        22: [
+            0x01,
+            0x10,
+            0x11,
+            0x13,
+            0x1B,
+            0x20,
+            0x21,
+            0x22,
+            0x30,
+            0x31,
+            0x32,
+            0x42,
+            0x43,
+            0x48,
+            0x52,
+            0x55,
+            0x58,
+            0x5E,
+        ],  # Facility_Coll
+        23: [0x1B, 0x23, 0x2C, 0x2D, 0x3B, 0x45],  # Plateau_Coll
+    }
+
+    walkable_tiles = tileset_walkable_tiles.get(current_tileset, [])
+
+    if tile_id in walkable_tiles:
+        return False  # Tile is walkable
+    else:
+        return True  # Tile is blocked
 
 
 def get_sprite_at_position(

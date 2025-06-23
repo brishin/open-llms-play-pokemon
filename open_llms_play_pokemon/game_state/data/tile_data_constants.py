@@ -143,6 +143,35 @@ DOOR_TILES = {
     TilesetID.PLATEAU: {0x3B, 0x1B},
 }
 
+# Warp tiles from pokered/data/tilesets/warp_tile_ids.asm
+# These are the actual warp-triggering tile IDs for each tileset
+WARP_TILES = {
+    TilesetID.OVERWORLD: {0x1B, 0x58},
+    TilesetID.REDS_HOUSE_1: {0x1A, 0x1C},
+    TilesetID.REDS_HOUSE_2: {0x1A, 0x1C},
+    TilesetID.MART: {0x5E},
+    TilesetID.FOREST: {0x5A, 0x5C, 0x3A},
+    TilesetID.DOJO: {0x4A},
+    TilesetID.POKECENTER: {0x5E},
+    TilesetID.GYM: {0x4A},
+    TilesetID.HOUSE: {0x54, 0x5C, 0x32},
+    TilesetID.FOREST_GATE: {0x3B},
+    TilesetID.MUSEUM: {0x3B},
+    TilesetID.UNDERGROUND: {0x13},
+    TilesetID.GATE: {0x3B},
+    TilesetID.SHIP: {0x37, 0x39, 0x1E, 0x4A},
+    TilesetID.SHIP_PORT: set(),  # No warp tiles
+    TilesetID.CEMETERY: {0x1B, 0x13},
+    TilesetID.INTERIOR: {0x15, 0x55, 0x04},
+    TilesetID.CAVERN: {0x18, 0x1A, 0x22},
+    TilesetID.LOBBY: {0x1A, 0x1C, 0x38},
+    TilesetID.MANSION: {0x1A, 0x1C, 0x53},
+    TilesetID.LAB: {0x34},
+    TilesetID.CLUB: set(),  # No warp tiles
+    TilesetID.FACILITY: {0x43, 0x58, 0x20, 0x1B, 0x13},
+    TilesetID.PLATEAU: {0x1B, 0x3B},
+}
+
 # Water tiles - these would need to be determined from actual pokered tileset analysis
 # Most tilesets don't have water tiles
 WATER_TILES = {

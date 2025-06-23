@@ -18,6 +18,7 @@ from .data.tile_data_constants import (
     SIGN_TILES,
     STRENGTH_BOULDER_TILES,
     TREE_TILES,
+    WARP_TILES,
     WATER_TILES,
     TilesetID,
 )
@@ -284,10 +285,13 @@ class TilePropertyDetector:
         if tileset_id in GRASS_TILES and tile_id in GRASS_TILES[tileset_id]:
             env_props["is_encounter"] = True
 
-        # Check for warp tiles (doors)
-        if tileset_id in DOOR_TILES and tile_id in DOOR_TILES[tileset_id]:
+        # Check for warp tiles (comprehensive check matching Pokemon Red logic)
+        if tileset_id in WARP_TILES and tile_id in WARP_TILES[tileset_id]:
             env_props["is_warp"] = True
             # Warp destination would need map data analysis
+        elif tileset_id in DOOR_TILES and tile_id in DOOR_TILES[tileset_id]:
+            env_props["is_warp"] = True
+            # Door tiles are also warp tiles
 
         # Water current detection for surfing mechanics
         if tileset_id in WATER_TILES and tile_id in WATER_TILES[tileset_id]:

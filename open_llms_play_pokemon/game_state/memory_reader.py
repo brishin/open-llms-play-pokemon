@@ -139,27 +139,26 @@ class PokemonRedMemoryReader:
     def _check_immediate_directions(
         self, all_tiles: list, player_top_left_x: int, player_top_left_y: int
     ) -> DirectionsAvailable:
-        """Check walkability of immediate neighboring tiles.
+        """Check walkability in each direction for Pokemon Red movement.
 
-        Pokemon Red checks tile properties from the bottom-left corner of the
-        player's 2x2 sprite area, not the top-left corner.
+        Pokemon Red movement checking uses specific tile positions relative to the
+        player sprite. For a 2x2 sprite at (8,9)-(9,10), movement checks:
+        - North: Check tile above player top-left (8,8)
+        - South: Check tile below player bottom-left (8,11)
+        - East: Check tile right of player top-right (10,9)
+        - West: Check tile two positions left of player top-left (6,9)
         """
-        # Calculate the bottom-left tile position for property checking
-        # Player sprite occupies (8,9)-(9,10), so bottom-left is (8,10)
-        property_check_x = player_top_left_x
-        property_check_y = player_top_left_y + 1
-
         directions = {
-            "north": (0, -1),
-            "south": (0, 1),
-            "east": (1, 0),
-            "west": (-1, 0),
+            "north": (0, -1),  # Check above top-left: (8,9) + (0,-1) = (8,8)
+            "south": (0, 2),  # Check below bottom-left: (8,9) + (0,2) = (8,11)
+            "east": (2, 0),  # Check right of top-right: (8,9) + (2,0) = (10,9)
+            "west": (-2, 0),  # Check two left of top-left: (8,9) + (-2,0) = (6,9)
         }
 
         directions_dict = {}
         for direction, (dx, dy) in directions.items():
-            check_x = property_check_x + dx
-            check_y = property_check_y + dy
+            check_x = player_top_left_x + dx
+            check_y = player_top_left_y + dy
 
             # Check if target position is within screen bounds
             if not (0 <= check_x < 20 and 0 <= check_y < 18):
