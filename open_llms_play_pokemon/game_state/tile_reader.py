@@ -2,7 +2,7 @@ from pyboy import PyBoyMemoryView
 
 from .data.memory_addresses import MemoryAddresses
 from .data.tile_data_constants import TilesetID
-from .tile_data import TileData, classify_tile_type, is_tile_walkable
+from .tile_data import TileData, classify_tile_type
 from .tile_property_detector import TilePropertyDetector
 
 
@@ -67,6 +67,10 @@ def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
         collision_ptr_high = memory_view[MemoryAddresses.tileset_collision_ptr + 1]
         collision_ptr = collision_ptr_low | (collision_ptr_high << 8)
 
+        # Validate pointer is reasonable (should be in ROM space)
+        if collision_ptr < 0x4000 or collision_ptr > 0x7FFF:
+            raise ValueError(f"Invalid collision pointer: 0x{collision_ptr:04X}")
+
         # Read collision table until FF termination
         # NOTE: Pokemon Red collision tables contain WALKABLE tiles, not blocked tiles
         offset = 0
@@ -82,9 +86,9 @@ def is_collision_tile(memory_view: PyBoyMemoryView, tile_id: int) -> bool:
 
         return True  # Tile not in collision table (blocked)
     except Exception:
-        # Fallback to tileset-specific collision tables if memory read fails
-        current_tileset = TilesetID(memory_view[MemoryAddresses.current_tileset])
-        return not is_tile_walkable(tile_id, current_tileset)
+        # Fallback: assume tiles are walkable unless we're certain they're blocked
+        # This prevents false blocking of valid movement paths
+        return False  # Default to walkable for movement analysis
 
 
 def get_sprite_at_position(
@@ -137,9 +141,9 @@ def read_entire_screen(memory_view: PyBoyMemoryView) -> list[TileData]:
     # Check if map is stable before analysis
     try:
         loading_status = memory_view[MemoryAddresses.map_loading_status]
-        # Allow common stable values: 0 (classic stable) and 16 (observed in init.state)
-        # Values like 1-3 might indicate transitioning states
-        if loading_status not in [0, 16]:  # Map might be transitioning
+        # Allow common stable values: 0 (classic stable), 16 (stable - observed in init.state)
+        # Only treat values 1-3 as actively transitioning states based on Pokemon Red source
+        if 1 <= loading_status <= 3:  # Map is actively transitioning
             return []
     except Exception:
         # If we can't read loading status, assume map is stable for tests

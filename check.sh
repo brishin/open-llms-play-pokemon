@@ -19,4 +19,7 @@ uv run pyright
 echo "🏗️  Running TypeScript type checking..."
 pnpm --dir ui typecheck
 
+echo "🧪 Running Python tests..."
+uv run pytest -v
+
 echo "✅ All checks passed!"

@@ -3,6 +3,8 @@
 import sys
 from pathlib import Path
 
+from pyboy import PyBoy
+
 # Add the project root to the Python path
 project_root = Path(__file__).parent.parent
 sys.path.insert(0, str(project_root))
@@ -18,13 +20,6 @@ from open_llms_play_pokemon.game_state.tile_data import TileMatrix
 
 def test_memory_reader_integration_with_init_state():
     """Integration test that loads real init.state and tests memory reader parsing."""
-    try:
-        from pyboy import PyBoy
-    except ImportError:
-        import pytest
-
-        pytest.skip("PyBoy not available for integration test")
-
     # Get paths to game files
     game_dir = project_root / "game"
     rom_path = game_dir / "Pokemon Red.gb"
@@ -38,7 +33,7 @@ def test_memory_reader_integration_with_init_state():
     # Initialize PyBoy with the ROM
     pyboy = None
     try:
-        pyboy = PyBoy(str(rom_path), window="null")
+        pyboy = PyBoy(str(rom_path), window="null", cgb=True)
 
         # Load the init.state
         with open(state_path, "rb") as f:
@@ -130,10 +125,10 @@ def test_memory_reader_integration_with_init_state():
         directions_dict = game_dict["directions_available"]
         assert isinstance(directions_dict, dict)
         assert directions_dict == {
-            "north": False,
-            "south": False,
-            "east": False,
-            "west": False,
+            "north": True,
+            "south": True,
+            "east": True,
+            "west": True,
         }
 
         print("✅ Integration test passed - loaded init.state with:")

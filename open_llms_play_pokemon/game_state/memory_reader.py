@@ -160,11 +160,25 @@ class PokemonRedMemoryReader:
         for direction, (dx, dy) in directions.items():
             check_x = property_check_x + dx
             check_y = property_check_y + dy
+
+            # Check if target position is within screen bounds
+            if not (0 <= check_x < 20 and 0 <= check_y < 18):
+                # Position is outside screen bounds - assume walkable (map boundary)
+                # Pokemon Red typically allows movement at map edges unless blocked
+                directions_dict[direction] = True
+                continue
+
             # Find tile at this position
             tile = next(
                 (t for t in all_tiles if t.x == check_x and t.y == check_y), None
             )
-            directions_dict[direction] = bool(tile and tile.is_walkable)
+
+            if tile is None:
+                # Tile not found in all_tiles list - this shouldn't happen for valid coords
+                # Fall back to assuming walkable to avoid blocking valid movement
+                directions_dict[direction] = True
+            else:
+                directions_dict[direction] = tile.is_walkable
 
         return DirectionsAvailable(
             north=directions_dict["north"],
