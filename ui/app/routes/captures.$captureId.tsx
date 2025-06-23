@@ -5,6 +5,7 @@ import { BoxContainer, BoxContainerContent } from '~/components/BoxContainer';
 import CapturesNav from '~/components/CapturesNav';
 import { TileDetailsBox } from '~/components/TileDetailsBox';
 import type { TileData } from '~/game-state/GameState.types';
+import { formatMapDisplay } from '~/utils/mapNames';
 import type { Route } from './+types/captures.$captureId';
 
 export async function loader({ params }: Route.LoaderArgs) {
@@ -37,7 +38,7 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
       stats.push(`Step: ${gameState.step_counter}`);
     }
     if (gameState.current_map !== undefined) {
-      stats.push(`Map: ${gameState.current_map}`);
+      stats.push(`Map: ${formatMapDisplay(gameState.current_map)}`);
     }
     if (gameState.player_x !== undefined && gameState.player_y !== undefined) {
       stats.push(`Position: (${gameState.player_x}, ${gameState.player_y})`);
@@ -161,7 +162,9 @@ export default function CaptureDetail({ loaderData }: Route.ComponentProps) {
                     {captureDetail.gameState.tile_matrix.current_map && (
                       <div>
                         <strong>Current Map:</strong>{' '}
-                        {captureDetail.gameState.tile_matrix.current_map}
+                        {formatMapDisplay(
+                          captureDetail.gameState.tile_matrix.current_map,
+                        )}
                       </div>
                     )}
                     {captureDetail.gameState.tile_matrix.player_x !== undefined &&

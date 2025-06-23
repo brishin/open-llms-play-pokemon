@@ -1,4 +1,5 @@
 import type { TileData } from '~/game-state/GameState.types';
+import { formatMapDisplay } from '~/utils/mapNames';
 import { BoxContainer, BoxContainerContent } from './BoxContainer';
 
 interface TileDetailsBoxProps {
@@ -94,7 +95,8 @@ export function TileDetailsBox({ hoveredTile, tilePosition }: TileDetailsBoxProp
 
           {hoveredTile.warp_destination_map !== null && (
             <div className="flex-1">
-              <strong>Warp To:</strong> Map {hoveredTile.warp_destination_map}(
+              <strong>Warp To:</strong>{' '}
+              {formatMapDisplay(hoveredTile.warp_destination_map)} (
               {hoveredTile.warp_destination_x}, {hoveredTile.warp_destination_y})
             </div>
           )}

@@ -1,4 +1,5 @@
 import type { MLFlowRun } from '~/mflow/MLFlowClient';
+import { formatMapDisplay } from '~/utils/mapNames';
 import { BoxContainer, BoxContainerContent } from './BoxContainer';
 
 interface MetricsDisplayProps {
@@ -39,7 +40,9 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
               </div>
               <div className="flex justify-between">
                 <span>Current Map:</span>
-                <span className="font-mono">{latestMetrics.current_map?.value ?? 0}</span>
+                <span className="font-mono">
+                  {formatMapDisplay(latestMetrics.current_map?.value ?? 0)}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>In Battle:</span>
@@ -113,7 +116,9 @@ export function MetricsDisplay({ run }: MetricsDisplayProps) {
                           <td className="p-[0.25ch] font-mono">{metric.step}</td>
                           <td className="p-[0.25ch] font-mono">{badges}</td>
                           <td className="p-[0.25ch] font-mono">{party}</td>
-                          <td className="p-[0.25ch] font-mono">{map}</td>
+                          <td className="p-[0.25ch] font-mono">
+                            {formatMapDisplay(map)}
+                          </td>
                           <td className="p-[0.25ch] font-mono">
                             {battle ? 'Yes' : 'No'}
                           </td>

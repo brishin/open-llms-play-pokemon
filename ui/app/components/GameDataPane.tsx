@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useFetcher } from 'react-router';
+import { formatMapDisplay } from '~/utils/mapNames';
 import { BoxContainer, BoxContainerContent } from './BoxContainer';
 
 interface GameDataPaneProps {
@@ -130,7 +131,9 @@ export function GameDataPane({ artifacts, runId, currentSliderStep }: GameDataPa
               </div>
               <div className="flex justify-between">
                 <span>Current Map:</span>
-                <span className="font-mono">{fetcher.data.current_map}</span>
+                <span className="font-mono">
+                  {formatMapDisplay(fetcher.data.current_map)}
+                </span>
               </div>
             </div>
           </div>
