@@ -5,7 +5,6 @@ This test verifies that warp tiles are properly displayed as 'W' in the
 walkable grid visualization.
 """
 
-
 from open_llms_play_pokemon.game_state.game_state_parsing import format_game_state_text
 
 
