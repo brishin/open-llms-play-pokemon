@@ -43,6 +43,7 @@ This directory contains a React Router v7 web application that provides a user i
 - `mlflow-js`: MLflow JavaScript client
 - `ky`: HTTP client for API requests
 - `@webtui/css` & `@webtui/theme-catppuccin`: UI styling
+- `@modelcontextprotocol/sdk`: MCP TypeScript SDK for game state parsing
 
 ### Development Dependencies
 - `typescript`: TypeScript support
@@ -57,6 +58,27 @@ The UI connects to the MLflow tracking server that logs Pokemon AI agent runs. I
 - Run artifacts (screenshots, game state files)
 - Trace data for debugging AI decision-making
 - Metrics and parameters from each run
+
+## MCP Integration
+
+The UI integrates with the Model Context Protocol (MCP) to handle game state parsing:
+
+### MCP Client (`app/mcp/McpClient.ts`)
+- Handles stdio transport to Python MCP server
+- Automatically spawns MCP server process when needed
+- Provides `getGameStateFromFile()` method for parsing `.state` files
+- Manages connection lifecycle and error handling
+
+### Game State Processing
+- **Old Format**: Direct JSON file reading from filesystem
+- **New Format**: MCP server parses binary `.state` files into JSON
+- Captures now save both `.png` screenshots and `.state` game files
+- MCP server uses PyBoy emulator to load and parse game state data
+
+### Error Handling
+- Graceful fallback if MCP server fails to start
+- Proper cleanup of child processes
+- Detailed error messages for debugging
 
 ## Data Integration
 
@@ -91,4 +113,8 @@ The UI displays comprehensive data logged by the DSPy Pokemon agent (`main_dspy.
 - Ensure MLflow server is running on `http://localhost:8080` before starting the UI
 - The application expects the 'open-llms-play-pokemon' experiment to exist
 - Screenshots and game state artifacts are displayed for debugging agent behavior
+- **MCP Integration**: The UI uses Model Context Protocol (MCP) via stdio transport to parse `.state` files
+  - MCP server is automatically spawned as a child process when needed
+  - Game state parsing is handled by the Python MCP server instead of direct file reads
+  - Supports the new `.state` file format from interactive captures
 - Use `pnpm` for package management and development commands

@@ -22,3 +22,5 @@ wheels/
 mlruns/
 mlartifacts/
 worktrees/
+captures/
+

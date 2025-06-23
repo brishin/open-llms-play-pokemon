@@ -8,12 +8,17 @@ import logging
 import signal
 import sys
 import tempfile
+from datetime import datetime
 from pathlib import Path
 
 import click
+import sdl2
+import sdl2.keyboard
+import sdl2.scancode
 from dotenv import load_dotenv
 
 from open_llms_play_pokemon.emulation.game_emulator import GameEmulator
+from open_llms_play_pokemon.game_state.memory_reader import PokemonRedMemoryReader
 
 # Load environment variables
 load_dotenv(Path(__file__).parent / ".env", override=True)
@@ -32,6 +37,9 @@ class InteractiveRunner:
         self.state_name = state_name
         self.emulator = None
         self.temp_state_file = None
+        self.memory_reader = None
+        self.step_counter = 0
+        self.captures_dir = Path("captures")
         self.setup_signal_handlers()
 
     def setup_signal_handlers(self):
@@ -45,20 +53,47 @@ class InteractiveRunner:
         self.cleanup()
         sys.exit(0)
 
+    def save_capture(self):
+        """Save screenshot and game state when a key is pressed."""
+        if not self.emulator:
+            return
+
+        try:
+            # Create captures directory if it doesn't exist
+            self.captures_dir.mkdir(exist_ok=True)
+
+            # Generate timestamp for filename
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+
+            # Save screenshot
+            screenshot_path = self.captures_dir / f"screenshot_{timestamp}.png"
+            screenshot = self.emulator.get_screen_image()
+            screenshot.save(screenshot_path)
+
+            # Save game state (.state file)
+            gamestate_path = self.captures_dir / f"gamestate_{timestamp}.state"
+            with open(gamestate_path, "wb") as f:
+                self.emulator.pyboy.save_state(f)
+
+            logger.info(
+                f"Saved capture: {screenshot_path.name} and {gamestate_path.name}"
+            )
+            self.step_counter += 1
+
+        except Exception as e:
+            logger.error(f"Error saving capture: {e}")
+
     def start(self):
         """Start the interactive session."""
         logger.info("Starting interactive Pokemon Red session...")
 
         try:
-            # Initialize emulator in non-headless mode
             self.emulator = GameEmulator(headless=False)
-            logger.info("Game emulator initialized")
+            self.memory_reader = PokemonRedMemoryReader(self.emulator.pyboy)
 
-            # Load initial state
             self.emulator.load_state(self.state_name)
             logger.info(f"Loaded state: {self.state_name}")
 
-            # Create temp file for saving state
             self.temp_state_file = tempfile.NamedTemporaryFile(
                 suffix=".state", delete=False, prefix="pokemon_red_"
             )
@@ -66,12 +101,21 @@ class InteractiveRunner:
 
             logger.info("=== INTERACTIVE MODE ===")
             logger.info("Use the game window to play Pokemon Red")
+            logger.info("Press 'Q' key to save screenshot and game state")
             logger.info("Press Ctrl+C to exit and save state")
             logger.info("========================")
 
             # Keep the game running until interrupted
+            q_key_was_pressed = False
             try:
                 while True:
+                    keyboard_state = sdl2.keyboard.SDL_GetKeyboardState(None)
+                    q_key_pressed = keyboard_state[sdl2.scancode.SDL_SCANCODE_Q]
+                    if q_key_pressed and not q_key_was_pressed:
+                        logger.info("Q key pressed - saving capture")
+                        self.save_capture()
+                    q_key_was_pressed = q_key_pressed
+
                     self.emulator.pyboy.tick()
             except KeyboardInterrupt:
                 logger.info("Keyboard interrupt received")

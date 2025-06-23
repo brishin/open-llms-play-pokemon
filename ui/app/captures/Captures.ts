@@ -1,13 +1,14 @@
 import { promises as fs, existsSync } from 'node:fs';
 import { join } from 'node:path';
 import type { GameState } from '~/game-state/GameState.types';
+import { getMcpClient } from '~/mcp/McpClient';
 import type { CaptureDetail, CaptureFile, CaptureListItem } from './Capture.types';
 
 const CAPTURES_DIR = join(process.cwd(), '..', 'captures');
 
 /**
  * Parse timestamp from capture filename
- * Expected format: screenshot_YYYYMMDD_HHMMSS.png or gamestate_YYYYMMDD_HHMMSS.json
+ * Expected format: screenshot_YYYYMMDD_HHMMSS.png or gamestate_YYYYMMDD_HHMMSS.state
  */
 function parseTimestampFromFilename(filename: string): string | null {
   const match = filename.match(/(?:screenshot_|gamestate_)(\d{8}_\d{6})/);
@@ -63,7 +64,7 @@ export async function getCaptureFiles(): Promise<CaptureFile[]> {
       if (file.startsWith('screenshot_') && file.endsWith('.png')) {
         capture.screenshotPath = join(CAPTURES_DIR, file);
         capture.screenshotExists = true;
-      } else if (file.startsWith('gamestate_') && file.endsWith('.json')) {
+      } else if (file.startsWith('gamestate_') && file.endsWith('.state')) {
         capture.gamestatePath = join(CAPTURES_DIR, file);
         capture.gamestateExists = true;
       }
@@ -112,9 +113,15 @@ export async function getCaptureDetail(captureId: string): Promise<CaptureDetail
     const screenshotBuffer = await fs.readFile(capture.screenshotPath);
     const screenshotDataUrl = `data:image/png;base64,${screenshotBuffer.toString('base64')}`;
 
-    // Read and parse game state file
-    const gamestateContent = await fs.readFile(capture.gamestatePath, 'utf-8');
-    const gameState: GameState = JSON.parse(gamestateContent);
+    const mcpClient = getMcpClient();
+    const relativePath = `captures/${capture.gamestatePath.split('/').pop()}`;
+    const mcpResult = await mcpClient.getGameStateFromFile(relativePath);
+
+    if (!mcpResult.success || !mcpResult.gameState) {
+      throw new Error(mcpResult.error || 'Failed to parse game state via MCP');
+    }
+
+    const gameState: GameState = mcpResult.gameState;
 
     return {
       timestamp: capture.timestamp,
