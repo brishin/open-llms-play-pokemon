@@ -174,6 +174,9 @@ export function AnnotatedScreenshot({
     const scaleX = dimensions.width / gameWidth;
     const scaleY = dimensions.height / gameHeight;
 
+    // Track which tiles have been processed as part of 2x2 warp grids
+    const processedWarpTiles = new Set<string>();
+
     for (let y = 0; y < height && y < tiles.length; y++) {
       for (let x = 0; x < width && x < tiles[y].length; x++) {
         const tile = tiles[y][x];
@@ -208,9 +211,70 @@ export function AnnotatedScreenshot({
         if (tile.is_encounter_tile) {
           fillColor = 'rgba(255, 255, 0, 0.4)'; // Yellow for grass/encounters
         }
-        if (tile.is_warp_tile) {
+        
+        // Handle warp tiles as 2x2 grids
+        const tileKey = `${x},${y}`;
+        let isWarpTile = false;
+        
+        if (tile.is_warp_tile && !processedWarpTiles.has(tileKey)) {
+          // Check if this is part of a 2x2 warp tile group
+          // We'll check if any of the surrounding tiles in a 2x2 pattern are also warp tiles
+          isWarpTile = true;
+          
+          // Try to find the top-left corner of a 2x2 warp group
+          for (let dy = 0; dy <= 1; dy++) {
+            for (let dx = 0; dx <= 1; dx++) {
+              const checkX = x - dx;
+              const checkY = y - dy;
+              
+              // Check if this could be the top-left of a 2x2 warp tile group
+              if (checkX >= 0 && checkY >= 0 && 
+                  checkX + 1 < width && checkY + 1 < height) {
+                
+                // Check if all 4 tiles in the 2x2 grid are warp tiles
+                let allWarp = true;
+                for (let ty = 0; ty <= 1; ty++) {
+                  for (let tx = 0; tx <= 1; tx++) {
+                    const t = tiles[checkY + ty]?.[checkX + tx];
+                    if (!t || !t.is_warp_tile) {
+                      allWarp = false;
+                      break;
+                    }
+                  }
+                  if (!allWarp) break;
+                }
+                
+                // If we found a valid 2x2 warp group, mark all tiles as processed
+                if (allWarp) {
+                  for (let ty = 0; ty <= 1; ty++) {
+                    for (let tx = 0; tx <= 1; tx++) {
+                      const warpX = checkX + tx;
+                      const warpY = checkY + ty;
+                      const warpKey = `${warpX},${warpY}`;
+                      processedWarpTiles.add(warpKey);
+                      
+                      // Apply warp color to all tiles in the 2x2 grid
+                      if (warpX === x && warpY === y) {
+                        fillColor = 'rgba(0, 0, 255, 0.4)'; // Blue for doors/warps
+                      }
+                    }
+                  }
+                  break;
+                }
+              }
+            }
+            if (processedWarpTiles.has(tileKey)) break;
+          }
+          
+          // If not part of a 2x2 group, still color it as a warp tile
+          if (!processedWarpTiles.has(tileKey)) {
+            fillColor = 'rgba(0, 0, 255, 0.4)'; // Blue for doors/warps
+          }
+        } else if (processedWarpTiles.has(tileKey)) {
+          // This tile is part of a 2x2 warp group
           fillColor = 'rgba(0, 0, 255, 0.4)'; // Blue for doors/warps
         }
+        
         if (tile.is_ledge_tile) {
           fillColor = 'rgba(255, 165, 0, 0.4)'; // Orange for ledges
         }
